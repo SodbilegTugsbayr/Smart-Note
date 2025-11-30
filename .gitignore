@@ -2,3 +2,4 @@
 backend/confs/
 host_conf/
 .DS_Store
+Makefile
