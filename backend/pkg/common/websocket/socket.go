@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/generator"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	ws "github.com/gorilla/websocket"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/common/generator"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/common/oapi"
 )
 
 type Websocket struct {

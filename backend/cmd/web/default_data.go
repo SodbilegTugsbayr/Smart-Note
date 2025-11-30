@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/app"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/entities"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/userman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/entities"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
 func addDefaultRecordsIfNotExist() {
@@ -15,7 +15,7 @@ func addDefaultRecordsIfNotExist() {
 			Model: entities.Model{ID: 1},
 			Role:  userman.ROLE_ADMIN,
 			Name:  "Orgio",
-			Email: "peakdot1@gmail.com",
+			Email: "sodbileg.tu@gmail.com",
 		})
 		panicOnError(err)
 	}

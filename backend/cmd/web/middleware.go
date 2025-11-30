@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/go-chi/chi"
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/app"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/common/oapi"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/userman"
 )
 
 type APIError struct {

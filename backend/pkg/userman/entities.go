@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/peakdot/go-nuxt-example/backend/pkg/entities"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/entities"
 )
 
 const (

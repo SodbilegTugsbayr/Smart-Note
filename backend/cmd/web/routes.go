@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/app"
 )
 
 func routes() http.Handler {

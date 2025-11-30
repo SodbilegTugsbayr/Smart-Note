@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/easyOAuth2"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/google/uuid"
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/app"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/common/oapi"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/easyOAuth2"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/userman"
 )
 
 type FacebookUserInfo struct {

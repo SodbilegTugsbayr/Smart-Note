@@ -1,4 +1,4 @@
-module github.com/peakdot/go-nuxt-example/backend
+module github.com/SodbilegTugsbayr/Smart-Note/backend
 
 go 1.22.4
 

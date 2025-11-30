@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/app"
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/validators"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/common/oapi"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/userman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/validators"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
 func getUsers(w http.ResponseWriter, r *http.Request) {

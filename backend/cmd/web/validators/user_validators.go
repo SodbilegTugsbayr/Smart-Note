@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/peakdot/go-nuxt-example/backend/pkg/userman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
 func ValidateUser(user *userman.User) error {

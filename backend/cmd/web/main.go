@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/peakdot/go-nuxt-example/backend/cmd/web/app"
-	"github.com/peakdot/go-nuxt-example/backend/pkg/userman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
 func main() {
