@@ -1,0 +1,15 @@
+$family: "Roboto", sans-serif;
+
+@use "vuetify/settings" with ( // component specific settings    
+    $body-font-family: $family,
+);
+
+html,
+body,
+#__nuxt,
+#__layout {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: clip;
+}
