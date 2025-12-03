@@ -27,6 +27,8 @@ func routes() http.Handler {
 		r.Post("/echo", echo)
 
 		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", login)
+			r.Post("/signup", signup)
 			r.Route("/google", func(r chi.Router) {
 				r.Get("/login", oauthLogin(app.GoogleOAuth2))
 				r.Get("/callback", oauthCallback(app.GoogleOAuth2))
