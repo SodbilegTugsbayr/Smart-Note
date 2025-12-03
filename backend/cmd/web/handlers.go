@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"net/http"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
@@ -17,12 +16,7 @@ const (
 )
 
 func ping(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("OK"))
-}
-
-func echo(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	io.Copy(w, r.Body)
+	oapi.SendResp(w, "OK")
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
