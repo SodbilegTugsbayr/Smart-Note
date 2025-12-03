@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"log"
+
 	ws "github.com/gorilla/websocket"
 )
 
@@ -37,9 +39,8 @@ func newConnection(key string, wsc *ws.Conn, websocket *Websocket) *Connection {
 	}
 }
 
-func (conn *Connection) Send(msgType, msg string) error {
+func (conn *Connection) Send(msgType, msg string) {
 	conn.messageQueue <- Message{Text: msg, Type: msgType}
-	return nil
 }
 
 // startWriter starts message writer from messageQueue AND starts pinger.
@@ -50,7 +51,10 @@ func (c *Connection) startWriter() {
 		for {
 			select {
 			case msg := <-c.messageQueue:
-				c.conn.WriteJSON(msg)
+				err := c.conn.WriteJSON(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
 			case <-c.closeChan:
 				finish = true
 			}

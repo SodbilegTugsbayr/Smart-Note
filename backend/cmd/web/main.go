@@ -26,7 +26,7 @@ func main() {
 		new(userman.User),
 	))
 
-	// addDefaultRecordsIfNotExist()
+	addDefaultRecordsIfNotExist()
 	srv := &http.Server{
 		Addr:         app.Config.Port,
 		ErrorLog:     app.ErrorLog,

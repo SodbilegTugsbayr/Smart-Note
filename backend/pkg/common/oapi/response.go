@@ -2,6 +2,7 @@ package oapi
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -17,9 +18,8 @@ func NewResponse(Data interface{}) *APIResponse {
 	return &APIResponse{Data: Data}
 }
 
-func SendResp(w http.ResponseWriter, Data interface{}) error {
+func SendResp(w http.ResponseWriter, Data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(Data)
 }
 
 func SendFormError(w http.ResponseWriter, Data interface{}) error {
@@ -38,12 +38,15 @@ func ForwardResponse(w http.ResponseWriter, apiResp *APIResponse) {
 	w.WriteHeader(apiResp.Response.StatusCode)
 
 	// Copy the body
-	w.Write([]byte(apiResp.ErrMessage))
+	_, err := w.Write([]byte(apiResp.ErrMessage))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-func Redirect(w http.ResponseWriter, url string) error {
+func Redirect(w http.ResponseWriter, url string) {
 	w.WriteHeader(http.StatusSeeOther)
-	return SendResp(w, url)
+	SendResp(w, url)
 }
 
 func (resp *APIResponse) Send(w http.ResponseWriter) error {

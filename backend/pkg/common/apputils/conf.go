@@ -23,5 +23,9 @@ func LoadConfig(target interface{}, path string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	yaml.Unmarshal(b, target)
+
+	err = yaml.Unmarshal(b, target)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

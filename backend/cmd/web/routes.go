@@ -24,8 +24,6 @@ func routes() http.Handler {
 	r.With(authenticate).Route("/pub", func(r chi.Router) {
 		r.Get("/logout", clearSession)
 
-		r.Post("/echo", echo)
-
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", login)
 			r.Post("/signup", signup)
