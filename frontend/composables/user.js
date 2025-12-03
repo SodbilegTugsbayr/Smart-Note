@@ -4,9 +4,15 @@ export const useUser = () => {
 
 export const useFetchMe = async () => {
   const user = useUser()
-  const { data: c, error } = await useFetch("/api/me")
+  const { data, error } = await useFetch("/api/me", {
+    credentials: "include",
+  })
+
   if (error.value) {
     user.value = null
+    return null
   }
-  user.value = c.value
+
+  user.value = data.value || null
+  return user.value
 }
