@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 const router = useRouter()
 const loading = ref(false)
 const error = ref("")
@@ -19,8 +19,8 @@ async function submit() {
       credentials: "include",
     })
     router.push("/")
-  } catch (err: any) {
-    error.value = err?.data || err?.message || "Sign up failed"
+  } catch (err) {
+    error.value = err?.data || err?.message || "Бүртгүүлэхэд алдаа гарлаа"
   } finally {
     loading.value = false
   }
@@ -32,32 +32,26 @@ async function submit() {
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="5" lg="4">
         <v-card class="pa-6" elevation="8">
-          <v-card-title class="text-h5 text-center">Create account</v-card-title>
+          <v-card-title class="text-h5 text-center">Шинээр бүртгэл үүсгэх</v-card-title>
           <v-card-subtitle class="text-center mb-4">
-            Join with your email and start using Smart Note.
+            Мэйл ээ ашиглан бүртгүүлнэ үү.
           </v-card-subtitle>
 
-          <v-alert
-            v-if="error"
-            type="error"
-            variant="tonal"
-            class="mb-4"
-            border="start"
-          >
+          <v-alert v-if="error" type="error" variant="tonal" class="mb-4" border="start">
             {{ error }}
           </v-alert>
 
           <v-form @submit.prevent="submit">
             <v-text-field
               v-model="form.name"
-              label="Full name"
+              label="Овог нэр"
               required
               variant="outlined"
               class="mb-3"
             />
             <v-text-field
               v-model="form.email"
-              label="Email"
+              label="Мэйл"
               type="email"
               required
               variant="outlined"
@@ -65,29 +59,23 @@ async function submit() {
             />
             <v-text-field
               v-model="form.password"
-              label="Password"
+              label="Нууц үг"
               type="password"
               required
               variant="outlined"
               class="mb-4"
-              hint="At least 8 characters"
+              hint="Доод тал нь 8 тэмдэгт"
               persistent-hint
             />
 
-            <v-btn
-              color="primary"
-              block
-              size="large"
-              :loading="loading"
-              type="submit"
-            >
-              Sign up
+            <v-btn color="primary" block size="large" :loading="loading" type="submit">
+              Бүртгүүлэх
             </v-btn>
           </v-form>
 
           <div class="d-flex justify-center mt-4">
-            <span class="me-1">Already have an account?</span>
-            <NuxtLink to="/login">Log in</NuxtLink>
+            <span class="me-1">Бүртгэлтэй юу?</span>
+            <NuxtLink to="/login">Нэвтрэх</NuxtLink>
           </div>
         </v-card>
       </v-col>

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 const router = useRouter()
 const loading = ref(false)
 const error = ref("")
@@ -18,8 +18,8 @@ async function submit() {
       credentials: "include",
     })
     router.push("/")
-  } catch (err: any) {
-    error.value = err?.data || err?.message || "Login failed"
+  } catch (err) {
+    error.value = err?.data || err?.message || "Нэврэхэд алдаа гарлаа"
   } finally {
     loading.value = false
   }
@@ -31,9 +31,9 @@ async function submit() {
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="5" lg="4">
         <v-card class="pa-6" elevation="8">
-          <v-card-title class="text-h5 text-center">Welcome back</v-card-title>
+          <v-card-title class="text-h5 text-center">Өдрийн мэнд</v-card-title>
           <v-card-subtitle class="text-center mb-4">
-            Sign in with your email and password.
+            Бүртгэлтэй мэйл болон нууц үгээ ашиглан нэвтэрнэ үү.
           </v-card-subtitle>
 
           <v-alert v-if="error" type="error" variant="tonal" class="mb-4" border="start">
@@ -43,7 +43,7 @@ async function submit() {
           <v-form @submit.prevent="submit">
             <v-text-field
               v-model="form.email"
-              label="Email"
+              label="Мэйл"
               type="email"
               required
               variant="outlined"
@@ -51,7 +51,7 @@ async function submit() {
             />
             <v-text-field
               v-model="form.password"
-              label="Password"
+              label="Нууц үг"
               type="password"
               required
               variant="outlined"
@@ -59,13 +59,13 @@ async function submit() {
             />
 
             <v-btn color="primary" block size="large" :loading="loading" type="submit">
-              Log in
+              Нэвтрэх
             </v-btn>
           </v-form>
 
           <div class="d-flex justify-center mt-4">
-            <span class="me-1">New here?</span>
-            <NuxtLink to="/signup">Create an account</NuxtLink>
+            <span class="me-1">Бүртгүүлэх үү?</span>
+            <NuxtLink to="/signup">Шинэ бүртгэл үүсгэх</NuxtLink>
           </div>
         </v-card>
       </v-col>
