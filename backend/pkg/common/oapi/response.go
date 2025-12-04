@@ -20,6 +20,10 @@ func NewResponse(Data interface{}) *APIResponse {
 
 func SendResp(w http.ResponseWriter, Data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(Data)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func SendFormError(w http.ResponseWriter, Data interface{}) error {
