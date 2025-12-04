@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup>
 const user = useUser()
 
 const lessons = ref([
@@ -42,7 +42,7 @@ const summary = computed(() => {
   return { total, completed, inProgress, averageProgress: Math.round(averageProgress) }
 })
 
-function statusColor(status: string) {
+function statusColor(status) {
   if (status === "Completed") return "success"
   if (status === "In progress") return "warning"
   return "default"
@@ -80,7 +80,7 @@ async function logout() {
             rounded
           />
         </v-card>
-        <v-btn color="error" variant="text" @click="logout"> Logout </v-btn>
+        <v-btn color="error" variant="text" @click="logout"> Гарах </v-btn>
       </v-col>
     </v-row>
 

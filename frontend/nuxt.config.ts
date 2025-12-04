@@ -83,11 +83,9 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: "My app",
-      titleTemplate: "%s %separator %site.name",
+      title: "Smart Note",
       templateParams: {
         site: {
-          name: 'My app',
           url: 'https://example.com',
         },
         separator: '-',
