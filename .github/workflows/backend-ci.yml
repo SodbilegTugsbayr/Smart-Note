@@ -76,10 +76,10 @@ jobs:
 
           mkdir -p backend/confs
 
-          # Write secret content exactly into prod.yaml
-          cat <<EOF > backend/confs/prod.yaml
-      ${PROD_CONFIG}
-      EOF
+          # DO NOT INDENT HEREDOC — variables must expand exactly
+cat <<EOF > backend/confs/prod.yaml
+${PROD_CONFIG}
+EOF
 
       - name: Prepare SSH
         env:
