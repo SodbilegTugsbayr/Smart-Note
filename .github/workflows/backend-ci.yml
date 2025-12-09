@@ -65,20 +65,12 @@ jobs:
         with:
           go-version: "1.22"
 
-      - name: Recreate prod config
+      - name: Create config file
         env:
           PROD_CONFIG: ${{ secrets.PROD_CONFIG }}
         run: |
-          if [ -z "${PROD_CONFIG}" ]; then
-            echo "PROD_CONFIG secret is missing" >&2
-            exit 1
-          fi
-
           mkdir -p backend/confs
-
-          cat <<EOF > backend/confs/prod.yaml
-${PROD_CONFIG}
-EOF
+          printf "%s" "$PROD_CONFIG" > backend/confs/prod.yaml
 
       - name: Prepare SSH
         env:
