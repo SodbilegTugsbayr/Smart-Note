@@ -65,10 +65,21 @@ jobs:
         with:
           go-version: "1.22"
 
-      - name: Recreate config file
+      - name: Recreate prod config
+        env:
+          PROD_CONFIG: ${{ secrets.PROD_CONFIG }}
         run: |
+          if [ -z "${PROD_CONFIG}" ]; then
+            echo "PROD_CONFIG secret is missing" >&2
+            exit 1
+          fi
+
           mkdir -p backend/confs
-          echo "${PROD_CONFIG}" > backend/confs/prod.yaml
+
+          # Write secret content exactly into prod.yaml
+          cat <<EOF > backend/confs/prod.yaml
+      ${PROD_CONFIG}
+      EOF
 
       - name: Prepare SSH
         env:
@@ -92,9 +103,11 @@ jobs:
       - name: Deploy backend
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          WORKDIR: ${{ github.workspace }}/backend
         run: |
-          scp backend/web ec2-user@"${DEPLOY_HOST}":/home/smart-note/backend/__web
-          scp backend/confs/prod.yaml ec2-user@"${DEPLOY_HOST}":/home/smart-note/__web.yaml
+          ls -l "${WORKDIR}/confs/prod.yaml"
+          scp "${WORKDIR}/web" ec2-user@"${DEPLOY_HOST}":/home/smart-note/backend/__web
+          scp "${WORKDIR}/confs/prod.yaml" ec2-user@"${DEPLOY_HOST}":/home/smart-note/__web.yaml
           ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note/backend && mv web _web && mv __web web"
           ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note && mv web.yaml _web.yaml && mv __web.yaml web.yaml"
           ssh -tt ec2-user@"${DEPLOY_HOST}" "supervisorctl -c /etc/supervisor/supervisord.conf restart web"
