@@ -84,12 +84,7 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: "Smart Note",
-      templateParams: {
-        site: {
-          url: 'https://example.com',
-        },
-        separator: '-',
-      },
+      titleTemplate: "%s",
       meta: [
         { charset: "utf-8" },
         { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
