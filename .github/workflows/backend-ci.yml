@@ -65,6 +65,11 @@ jobs:
         with:
           go-version: "1.22"
 
+      - name: Recreate config file
+        run: |
+          mkdir -p backend/confs
+          echo "${PROD_CONFIG}" > backend/confs/prod.yaml
+
       - name: Prepare SSH
         env:
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
