@@ -9,6 +9,12 @@ on:
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: "Target environment to deploy (e.g. production)"
+        default: "production"
+        required: false
 
 jobs:
   test-and-lint:
@@ -46,3 +52,41 @@ jobs:
           working-directory: backend
           args: |
             --timeout=5m
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test-and-lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Prepare SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${DEPLOY_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Build backend binary
+        working-directory: ./backend
+        run: ENV GOOS=linux go build ./cmd/web
+
+      - name: Deploy backend
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          scp backend/web ec2-user@"${DEPLOY_HOST}":/home/smart-note/backend/__web
+          scp backend/confs/prod.yaml ec2-user@"${DEPLOY_HOST}":/home/smart-note/__web.yaml
+          ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note/backend && mv web _web && mv __web web"
+          ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note && mv web.yaml _web.yaml && mv __web.yaml web.yaml"
+          ssh -tt ec2-user@"${DEPLOY_HOST}" "sudo supervisorctl restart backend"
