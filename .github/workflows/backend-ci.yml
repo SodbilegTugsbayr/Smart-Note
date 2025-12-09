@@ -84,8 +84,10 @@ jobs:
         working-directory: ./backend
         env:
           GOOS: linux
-          GOARCH: amd64
-        run: go build ./cmd/web
+          GOARCH: arm64
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags "-s -w" -o web ./cmd/web
 
       - name: Deploy backend
         env:
@@ -95,4 +97,4 @@ jobs:
           scp backend/confs/prod.yaml ec2-user@"${DEPLOY_HOST}":/home/smart-note/__web.yaml
           ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note/backend && mv web _web && mv __web web"
           ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note && mv web.yaml _web.yaml && mv __web.yaml web.yaml"
-          ssh -tt ec2-user@"${DEPLOY_HOST}" "sudo supervisorctl restart backend"
+          ssh -tt ec2-user@"${DEPLOY_HOST}" "supervisorctl restart web"
