@@ -82,8 +82,8 @@ jobs:
           ssh-keyscan "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
 
       - name: Deploy static files
-        working-directory: ./frontend/.output/public
+        working-directory: ./frontend/.output
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          rsync -avz --delete ./ ec2-user@"${DEPLOY_HOST}":/var/www/html/
+          scp -r ./*  ec2-user@"${DEPLOY_HOST}":/var/www/html
