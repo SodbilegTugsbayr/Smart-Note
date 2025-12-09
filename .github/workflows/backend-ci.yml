@@ -76,8 +76,7 @@ jobs:
 
           mkdir -p backend/confs
 
-          # DO NOT INDENT HEREDOC — variables must expand exactly
-cat <<EOF > backend/confs/prod.yaml
+          cat <<EOF > backend/confs/prod.yaml
 ${PROD_CONFIG}
 EOF
 
