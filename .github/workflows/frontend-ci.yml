@@ -1,0 +1,89 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-ci.yml"
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: "Target environment to deploy (e.g. production)"
+        default: "production"
+        required: false
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+
+      - name: Build (Nuxt)
+        working-directory: ./frontend
+        env:
+          NODE_ENV: production
+        run: yarn build
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test-and-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+
+      - name: Build static site
+        working-directory: ./frontend
+        env:
+          NODE_ENV: production
+        run: yarn generate --dotenv ./env/prod.env
+
+      - name: Prepare SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "${DEPLOY_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+
+      - name: Deploy static files
+        working-directory: ./frontend/.output/public
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          rsync -avz --delete ./ ec2-user@"${DEPLOY_HOST}":/var/www/html/
