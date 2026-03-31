@@ -12,10 +12,11 @@ func addDefaultRecordsIfNotExist() {
 
 	if count == 0 {
 		_, err := app.Users.Save(&userman.User{
-			Model: entities.Model{ID: 1},
-			Role:  userman.ROLE_ADMIN,
-			Name:  "Orgio",
-			Email: "sodbileg.tu@gmail.com",
+			Model:     entities.Model{ID: 1},
+			Role:      userman.ROLE_ADMIN,
+			FirstName: "Tugsbayar",
+			LastName:  "Sodbileg",
+			Email:     "sodbileg.tu@gmail.com",
 		})
 		panicOnError(err)
 	}

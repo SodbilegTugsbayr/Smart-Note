@@ -4,7 +4,8 @@ const loading = ref(false)
 const error = ref("")
 
 const form = reactive({
-  name: "",
+  firstname: "",
+  lastname: "",
   email: "",
   password: "",
 })
@@ -55,25 +56,36 @@ async function submit() {
 
           <form @submit.prevent="submit" class="login-form">
             <div class="field">
-              <Label for="name" class="field-label">Овог нэр</Label>
+              <Label for="firstname" class="field-label">Овог</Label>
               <Input
                 id="name"
-                v-model="form.name"
+                v-model="form.firstname"
                 type="text"
                 required
-                placeholder="Бат Болд"
+                placeholder="Бат"
                 class="field-input"
                 :class="{ 'field-input--error': error }"
                 autocomplete="name"
               />
             </div>
-
+            <div class="field">
+              <Label for="lastname" class="field-label">Нэр</Label>
+              <Input
+                id="name"
+                v-model="form.lastname"
+                type="text"
+                required
+                placeholder="Болд"
+                class="field-input"
+                :class="{ 'field-input--error': error }"
+                autocomplete="name"
+              />
+            </div>
             <div class="field">
               <Label for="email" class="field-label">Мэйл</Label>
               <Input
                 id="email"
                 v-model="form.email"
-                type="email"
                 required
                 placeholder="you@example.com"
                 class="field-input"

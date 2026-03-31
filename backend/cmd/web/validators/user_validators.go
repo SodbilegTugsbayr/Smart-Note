@@ -10,22 +10,22 @@ import (
 )
 
 func ValidateUser(user *userman.User) error {
-	user.Name = strings.TrimSpace(user.Name)
+	user.FirstName = strings.TrimSpace(user.FirstName)
 	user.PhoneNumber = strings.TrimSpace(user.PhoneNumber)
 	user.Email = strings.TrimSpace(user.Email)
 
 	if user.Email == "" {
-		return errors.New("email is required")
+		return errors.New("email_is_required")
 	}
 
 	if _, err := mail.ParseAddress(user.Email); err != nil {
 		return err
 	}
 
-	if utf8.RuneCountInString(user.Name) > 50 ||
+	if utf8.RuneCountInString(user.FirstName) > 50 || utf8.RuneCountInString(user.LastName) > 50 ||
 		utf8.RuneCountInString(user.PhoneNumber) > 50 ||
 		utf8.RuneCountInString(user.Email) > 255 {
-		return errors.New("invalid user info")
+		return errors.New("invalid_user_info")
 	}
 
 	return nil

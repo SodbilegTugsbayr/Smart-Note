@@ -11,7 +11,6 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/easyOAuth2"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
-	"github.com/google/uuid"
 )
 
 type FacebookUserInfo struct {
@@ -86,7 +85,8 @@ func oauthCallback(oauthClient *easyOAuth2.EasyOAuthClient) func(w http.Response
 			userData = &userman.User{
 				AuthType:       userman.AUTH_TYPE_GOOGLE,
 				GoogleID:       userinfo.ID,
-				Name:           userinfo.Name,
+				FirstName:      userinfo.FamilyName,
+				LastName:       userinfo.GivenName,
 				ProfilePicture: userinfo.Picture,
 				Email:          userinfo.Email,
 			}
@@ -104,7 +104,8 @@ func oauthCallback(oauthClient *easyOAuth2.EasyOAuthClient) func(w http.Response
 			userData = &userman.User{
 				AuthType:       userman.AUTH_TYPE_FACEBOOK,
 				FacebookID:     userinfo.ID,
-				Name:           userinfo.ShortName,
+				FirstName:      userinfo.FirstName,
+				LastName:       userinfo.LastName,
 				ProfilePicture: userinfo.Picture.Data.URL,
 			}
 		default:
@@ -118,20 +119,19 @@ func oauthCallback(oauthClient *easyOAuth2.EasyOAuthClient) func(w http.Response
 			return
 		}
 
-		recentlyDeleted, err := app.Users.GetRecentlyDeleted(filter, authTypes)
-		if err != nil && !errors.Is(err, userman.ErrNotFound) {
-			oapi.ServerError(w, err)
-			return
-		}
+		// recentlyDeleted, err := app.Users.GetRecentlyDeleted(filter, authTypes)
+		// if err != nil && !errors.Is(err, userman.ErrNotFound) {
+		// 	oapi.ServerError(w, err)
+		// 	return
+		// }
 
-		if recentlyDeleted != nil {
-			http.Redirect(w, r, "/account_deleted", http.StatusTemporaryRedirect)
-			return
-		}
+		// if recentlyDeleted != nil {
+		// 	http.Redirect(w, r, "/account_deleted", http.StatusTemporaryRedirect)
+		// 	return
+		// }
 
 		if user == nil {
-			userData.Role = userman.ROLE_BASIC
-			userData.UUID = uuid.NewString()
+			userData.Role = userman.ROLE_USER
 			userData.LastLogin = time.Now()
 			userData.IsVerified = true
 			c, err := app.Users.Save(userData)
@@ -141,7 +141,8 @@ func oauthCallback(oauthClient *easyOAuth2.EasyOAuthClient) func(w http.Response
 			}
 			user = c
 		} else {
-			user.Name = userData.Name
+			user.FirstName = userData.FirstName
+			user.LastName = userData.LastName
 			user.Email = userData.Email
 			user.ProfilePicture = userData.ProfilePicture
 			user.LastLogin = time.Now()
@@ -157,7 +158,6 @@ func oauthCallback(oauthClient *easyOAuth2.EasyOAuthClient) func(w http.Response
 		}
 
 		app.Session.Put(r, "auth_user_id", user.ID)
-		app.Session.Put(r, "oauth2_provider_name", oauthClient.Name)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	}
 }

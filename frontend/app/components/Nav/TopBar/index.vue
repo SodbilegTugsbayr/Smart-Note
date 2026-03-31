@@ -8,27 +8,16 @@ import {
   UserIcon,
 } from "lucide-vue-next"
 
-const user = ref(null)
-
-onMounted(async () => {
-  try {
-    user.value = await $fetch("/api/me")
-  } catch {}
-})
+const router = useRouter()
+const user = useUser()
 
 const initials = computed(() => {
-  if (!user.value?.full_name) return "SN"
-  return user.value.full_name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
+  return `${user.value.firstname.toUpperCase().slice(0, 1)}${user.value.lastname.toUpperCase().slice(0, 1)}`
 })
 
 async function logout() {
-  await $fetch("/pub/logout", { method: "GET" })
-  navigateTo("/login")
+  await $fetch("/api/logout", { method: "POST" })
+  router.push("/")
 }
 </script>
 
@@ -74,7 +63,9 @@ async function logout() {
             <DropdownMenuContent align="end" class="w-48 glass-card border-white/10">
               <template v-if="user">
                 <div class="px-3 py-2">
-                  <p class="text-sm font-medium text-foreground">{{ user.full_name }}</p>
+                  <p class="text-sm font-medium text-foreground">
+                    {{ user.firstname }} {{ user.lastname }}
+                  </p>
                   <p class="text-xs text-muted-foreground">{{ user.email }}</p>
                 </div>
                 <DropdownMenuSeparator class="bg-white/5" />

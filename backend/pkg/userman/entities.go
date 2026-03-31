@@ -8,21 +8,21 @@ import (
 )
 
 const (
-	ROLE_BASIC = "basic"
+	ROLE_USER  = "user"
 	ROLE_ADMIN = "admin"
 
-	AUTH_TYPE_BASIC    = "username_password"
+	AUTH_TYPE_BASIC    = "basic"
 	AUTH_TYPE_FACEBOOK = "facebook"
 	AUTH_TYPE_GOOGLE   = "google"
 )
 
 type User struct {
 	entities.Model
-	UUID           string       `json:"uuid"`
 	AuthType       string       `json:"auth_type"`
-	Role           string       `json:"role"` // @TO-DO
+	Role           string       `json:"role"`
 	PasswordHash   string       `json:"-"`
-	Name           string       `json:"name"`
+	FirstName      string       `json:"firstname"`
+	LastName       string       `json:"lastname"`
 	PhoneNumber    string       `json:"phone_number"`
 	Location       string       `json:"location"`
 	FacebookURL    string       `json:"facebook_url"`

@@ -21,13 +21,6 @@ func ping(w http.ResponseWriter, r *http.Request) {
 
 func logout(w http.ResponseWriter, r *http.Request) {
 	app.Session.Remove(r, "auth_user_id")
-	app.Session.Remove(r, "oauth2_provider_name")
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func clearSession(w http.ResponseWriter, r *http.Request) {
-	app.Session.Remove(r, "auth_user_id")
-	app.Session.Remove(r, "oauth2_provider_name")
 	oapi.SendResp(w, "OK")
 }
 

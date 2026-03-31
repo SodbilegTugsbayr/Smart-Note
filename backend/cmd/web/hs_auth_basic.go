@@ -11,13 +11,13 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/validators"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
-	"github.com/google/uuid"
 )
 
 type signupPayload struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	FirstName string `json:"firstname"`
+	LastName  string `json:"lastname"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
 }
 
 type loginPayload struct {
@@ -33,10 +33,11 @@ func signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := &userman.User{
-		Name:     strings.TrimSpace(payload.Name),
-		Email:    strings.TrimSpace(payload.Email),
-		AuthType: userman.AUTH_TYPE_BASIC,
-		Role:     userman.ROLE_BASIC,
+		FirstName: strings.TrimSpace(payload.FirstName),
+		LastName:  strings.TrimSpace(payload.LastName),
+		Email:     strings.TrimSpace(payload.Email),
+		AuthType:  userman.AUTH_TYPE_BASIC,
+		Role:      userman.ROLE_USER,
 	}
 
 	if err := validators.ValidateUser(user); err != nil {
@@ -45,12 +46,12 @@ func signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.TrimSpace(payload.Password) == "" || len(payload.Password) < 8 {
-		oapi.CustomError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		oapi.CustomError(w, http.StatusBadRequest, "password_must_be_atleast_8_characters")
 		return
 	}
 
 	if _, err := app.Users.Get(&userman.User{Email: user.Email}); err == nil {
-		oapi.CustomError(w, http.StatusConflict, "user already exists")
+		oapi.CustomError(w, http.StatusConflict, "user_exists")
 		return
 	} else if !errors.Is(err, userman.ErrNotFound) {
 		oapi.ServerError(w, err)
@@ -64,7 +65,6 @@ func signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user.PasswordHash = passwordHash
-	user.UUID = uuid.NewString()
 	user.LastLogin = time.Now()
 	user.IsVerified = true
 
@@ -75,8 +75,6 @@ func signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.Session.Put(r, "auth_user_id", savedUser.ID)
-	app.Session.Remove(r, "oauth2_provider_name")
-
 	oapi.SendResp(w, savedUser)
 }
 
@@ -119,7 +117,5 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app.Session.Put(r, "auth_user_id", user.ID)
-	app.Session.Remove(r, "oauth2_provider_name")
-
 	oapi.SendResp(w, user)
 }

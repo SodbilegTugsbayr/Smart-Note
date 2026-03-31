@@ -22,8 +22,6 @@ func routes() http.Handler {
 
 	// Public routes
 	r.With(authenticate).Route("/pub", func(r chi.Router) {
-		r.Get("/logout", clearSession)
-
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", login)
 			r.Post("/signup", signup)
@@ -36,7 +34,6 @@ func routes() http.Handler {
 				r.Get("/callback", oauthCallback(app.FacebookOAuth2))
 			})
 		})
-
 	})
 
 	// Authenticated routes
@@ -48,7 +45,9 @@ func routes() http.Handler {
 
 		r.Route("/course", func(r chi.Router) {
 			r.Get("/", getCourse)
+			r.Post("/", saveCourse)
 		})
+
 		r.With(requireAdmin).Route("/users", func(r chi.Router) {
 			r.Get("/", getUsers)
 			r.Post("/", editUser)

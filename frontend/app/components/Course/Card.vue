@@ -63,3 +63,15 @@ const isCompleted = computed(() => props.course.status === "completed")
     </div>
   </div>
 </template>
+
+<style lang="css">
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+}
+.glass-card-hover:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+</style>

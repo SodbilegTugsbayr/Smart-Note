@@ -9,6 +9,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/apputils"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/mailer"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/websocket"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/easyOAuth2"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/golangcollege/sessions"
@@ -35,6 +36,7 @@ var (
 	// Services
 	Mailer         *mailer.Mailer
 	Users          *userman.Service
+	Courses        *courseman.Service
 	GoogleOAuth2   *easyOAuth2.EasyOAuthClient
 	FacebookOAuth2 *easyOAuth2.EasyOAuthClient
 )
@@ -81,6 +83,7 @@ func Init(path string) {
 	DB = apputils.OpenDB(Config.DSN)
 
 	Users = userman.NewService(DB, InfoLog, ErrorLog)
+	Courses = courseman.NewService(DB, InfoLog, ErrorLog)
 
 	Session = sessions.New([]byte(Config.SessionSecret))
 	Session.Lifetime = 7 * 24 * time.Hour

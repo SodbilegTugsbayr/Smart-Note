@@ -3,9 +3,17 @@ import { PlusIcon } from "lucide-vue-next"
 
 const showCreate = ref(false)
 
-const { data: courses, status } = await useFetch("/api/course", {
+const {
+  data: courses,
+  status,
+  refresh,
+} = await useFetch("/api/course", {
   query: { sort: "-created_date" },
   default: () => [],
+})
+
+onMounted(() => {
+  refresh()
 })
 </script>
 
@@ -38,11 +46,11 @@ const { data: courses, status } = await useFetch("/api/course", {
     </div>
 
     <!-- Empty state -->
-    <CourseEmptyState v-else-if="courses.length === 0" @create="showCreate = true" />
+    <CourseEmptyState v-else-if="courses.items.length === 0" @create="showCreate = true" />
 
     <!-- Course grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <CourseCard v-for="course in courses" :key="course.id" :course="course" />
+      <CourseCard v-for="course in courses.items" :key="course.id" :course="course" />
     </div>
 
     <!-- Modal -->

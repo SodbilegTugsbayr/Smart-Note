@@ -1,5 +1,3 @@
 <template>
-  <v-layout>
-    <slot></slot>
-  </v-layout>
+  <slot></slot>
 </template>

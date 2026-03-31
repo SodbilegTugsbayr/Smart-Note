@@ -58,7 +58,8 @@ func editUser(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := r.Context().Value(app.ContextKeyChosenUser).(*userman.User)
 
-	user.Name = data.Name
+	user.FirstName = data.FirstName
+	user.LastName = data.LastName
 	user.PhoneNumber = data.PhoneNumber
 
 	savedUser, err := app.Users.Save(user)
@@ -95,7 +96,8 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	loggedUser.Name = data.Name
+	loggedUser.FirstName = data.FirstName
+	loggedUser.LastName = data.LastName
 	loggedUser.FacebookURL = data.FacebookURL
 	loggedUser.PhoneNumber = data.PhoneNumber
 

@@ -1,6 +1,6 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  // Authentication check
   const publicPaths = ["/login", "/signup", "/landing"]
+  await useFetchMe()
   const user = useUser()
 
   if (user.value === null) {
