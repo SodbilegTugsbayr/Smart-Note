@@ -1,5 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import vuetify, { transformAssetUrls } from "vite-plugin-vuetify"
+import tailwindcss from "@tailwindcss/vite"
 
 const isDev = process.env.NODE_ENV !== "production"
 
@@ -26,27 +26,15 @@ console.log(domain)
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  build: {
-    transpile: ["vuetify"],
-  },
+
+  // Removed: build.transpile vuetify
+  // Removed: css vuetify/styles
+  // Removed: plugins vuetify.ts
+  // Removed: modules vite-plugin-vuetify hook
+  // Removed: vite.css.preprocessorOptions scss (was only for vuetify settings.scss)
+
   css: [
-    "vuetify/styles",
-  ],
-  plugins: ["~/plugins/vuetify.ts"],
-  modules: [
-    async (_options, nuxt) => {
-      nuxt.hooks.hook("vite:extendConfig", (config) => {
-        // @ts-expect-error
-        config.plugins.push(
-          vuetify({
-            autoImport: true,
-            styles: {
-              configFile: "./assets/settings.scss",
-            },
-          }),
-        )
-      })
-    },
+    "~/assets/css/main.css", // Tailwind + shadcn CSS variables live here
   ],
 
   ssr: false,
@@ -65,18 +53,9 @@ export default defineNuxtConfig({
   },
 
   vite: {
-    vue: {
-      template: {
-        transformAssetUrls,
-      },
-    },
-    css: {
-      preprocessorOptions: {
-        scss: {
-          additionalData: '@import "./assets/settings.scss";',
-        },
-      },
-    },
+    plugins: [
+      tailwindcss(),
+    ],
   },
 
   nitro,
