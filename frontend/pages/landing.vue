@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Progress } from "@/components/ui/progress"
+
 const router = useRouter()
 
 function goToLogin() {
@@ -40,8 +46,8 @@ const features = [
           Smart Note
         </span>
         <nav class="nav-actions">
-          <button class="btn-ghost" @click="goToLogin">Нэвтрэх</button>
-          <button class="btn-primary" @click="goToSignup">Бүртгүүлэх</button>
+          <Button variant="ghost" class="btn-ghost" @click="goToLogin"> Нэвтрэх </Button>
+          <Button class="btn-primary" @click="goToSignup"> Бүртгүүлэх </Button>
         </nav>
       </div>
     </header>
@@ -49,10 +55,10 @@ const features = [
     <!-- Hero -->
     <main class="hero">
       <div class="hero-left">
-        <div class="badge">
+        <Badge class="badge">
           <span class="badge-dot" />
           Cурагчдад зориулсан
-        </div>
+        </Badge>
 
         <h1 class="hero-title">
           Хичээлээ цэгцтэй<br />
@@ -66,11 +72,11 @@ const features = [
         </p>
 
         <div class="hero-cta">
-          <button class="btn-primary btn-lg" @click="goToSignup">
+          <Button class="btn-primary btn-lg" @click="goToSignup">
             Бүртгүүлэх
             <span class="btn-arrow">→</span>
-          </button>
-          <button class="btn-outline btn-lg" @click="goToLogin">Нэвтрэх</button>
+          </Button>
+          <Button variant="outline" class="btn-outline btn-lg" @click="goToLogin"> Нэвтрэх </Button>
         </div>
 
         <div class="social-proof">
@@ -81,48 +87,49 @@ const features = [
         </div>
       </div>
 
+      <!-- Hero Right -->
       <div class="hero-right">
-        <div class="feature-card">
-          <div class="card-header">
+        <Card class="feature-card">
+          <CardHeader class="card-header">
             <div class="card-dot card-dot-red" />
             <div class="card-dot card-dot-yellow" />
             <div class="card-dot card-dot-green" />
             <span class="card-title-label">Яагаад Smart Note?</span>
-          </div>
+          </CardHeader>
 
-          <ul class="feature-list">
-            <li
-              v-for="(item, i) in features"
-              :key="i"
-              class="feature-item"
-              :style="`animation-delay: ${0.1 + i * 0.12}s`"
-            >
-              <span class="feature-icon">{{ item.icon }}</span>
-              <span class="feature-text">{{ item.text }}</span>
-            </li>
-          </ul>
+          <CardContent class="p-0">
+            <ul class="feature-list">
+              <li
+                v-for="(item, i) in features"
+                :key="i"
+                class="feature-item"
+                :style="`animation-delay: ${0.1 + i * 0.12}s`"
+              >
+                <span class="feature-icon">{{ item.icon }}</span>
+                <span class="feature-text">{{ item.text }}</span>
+              </li>
+            </ul>
 
-          <div class="card-stats">
-            <div class="stat">
-              <span class="stat-value">94%</span>
-              <span class="stat-label">Хэрэглэгчийн сэтгэл ханамж</span>
+            <div class="card-stats">
+              <div class="stat">
+                <span class="stat-value">94%</span>
+                <span class="stat-label">Хэрэглэгчийн сэтгэл ханамж</span>
+              </div>
+              <Separator orientation="vertical" class="stat-divider" />
+              <div class="stat">
+                <span class="stat-value">3x</span>
+                <span class="stat-label">Суралцах хурд нэмэгдэнэ</span>
+              </div>
             </div>
-            <div class="stat-divider" />
-            <div class="stat">
-              <span class="stat-value">3x</span>
-              <span class="stat-label">Суралцах хурд нэмэгдэнэ</span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         <!-- Floating progress pill -->
         <div class="float-pill float-pill-1">
           <span class="pill-icon">🎯</span>
           <div>
             <div class="pill-label">Өнөөдрийн зорилго</div>
-            <div class="pill-bar">
-              <div class="pill-fill" style="width: 72%" />
-            </div>
+            <Progress :model-value="72" class="pill-bar" />
           </div>
           <span class="pill-pct">72%</span>
         </div>
@@ -220,62 +227,64 @@ const features = [
   gap: 10px;
 }
 
-/* ── Buttons ── */
+/* ── Button overrides ── */
 .btn-ghost {
-  background: transparent;
-  border: none;
-  color: #9ca3af;
+  background: transparent !important;
+  border: none !important;
+  color: #9ca3af !important;
   font-family: "DM Sans", sans-serif;
   font-size: 0.875rem;
   font-weight: 500;
   padding: 8px 16px;
   border-radius: 8px;
-  cursor: pointer;
-  transition: color 0.2s;
+  box-shadow: none !important;
 }
 .btn-ghost:hover {
-  color: #e8e9f0;
+  color: #e8e9f0 !important;
+  background: transparent !important;
 }
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-  border: none;
-  color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
+  border: none !important;
+  color: #fff !important;
   font-family: "DM Sans", sans-serif;
   font-size: 0.875rem;
   font-weight: 600;
   padding: 9px 20px;
   border-radius: 8px;
-  cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition:
     opacity 0.2s,
     transform 0.15s;
+  box-shadow: none !important;
 }
 .btn-primary:hover {
   opacity: 0.9;
   transform: translateY(-1px);
 }
 .btn-outline {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #c4c4d4;
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #c4c4d4 !important;
   font-family: "DM Sans", sans-serif;
   font-weight: 500;
   border-radius: 10px;
-  cursor: pointer;
   transition:
     border-color 0.2s,
     color 0.2s;
+  box-shadow: none !important;
 }
 .btn-outline:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  color: #e8e9f0;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  color: #e8e9f0 !important;
+  background: transparent !important;
 }
 .btn-lg {
-  font-size: 1rem;
-  padding: 13px 28px;
+  font-size: 1rem !important;
+  padding: 13px 28px !important;
+  height: auto !important;
 }
 .btn-arrow {
   transition: transform 0.2s;
@@ -304,14 +313,14 @@ const features = [
   }
 }
 
-/* ── Hero Left ── */
+/* ── Badge override ── */
 .badge {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   gap: 8px;
-  background: rgba(99, 102, 241, 0.12);
-  border: 1px solid rgba(99, 102, 241, 0.25);
-  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.12) !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
+  color: #a5b4fc !important;
   font-size: 0.78rem;
   font-weight: 500;
   padding: 5px 12px;
@@ -324,6 +333,7 @@ const features = [
   height: 6px;
   background: #818cf8;
   border-radius: 50%;
+  flex-shrink: 0;
   animation: pulse 2s ease infinite;
 }
 @keyframes pulse {
@@ -354,7 +364,6 @@ const features = [
   background-clip: text;
   font-style: italic;
 }
-
 .hero-sub {
   font-size: 1rem;
   line-height: 1.7;
@@ -363,7 +372,6 @@ const features = [
   margin: 0 0 32px;
   animation: fadeUp 0.6s ease 0.2s both;
 }
-
 .hero-cta {
   display: flex;
   flex-wrap: wrap;
@@ -371,7 +379,6 @@ const features = [
   margin-bottom: 36px;
   animation: fadeUp 0.6s ease 0.3s both;
 }
-
 .social-proof {
   display: flex;
   align-items: center;
@@ -407,27 +414,34 @@ const features = [
   animation: fadeUp 0.7s ease 0.2s both;
 }
 
+/* ── Card overrides ── */
 .feature-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 28px;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
+  padding: 28px !important;
   backdrop-filter: blur(20px);
   box-shadow:
     0 32px 64px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+.card-header {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 24px !important;
+  padding: 0 !important;
+}
+/* suppress the default space-y from CardHeader */
+.card-header > :deep(*) {
+  margin-top: 0 !important;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 24px;
-}
 .card-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 .card-dot-red {
   background: #ef4444;
@@ -484,7 +498,6 @@ const features = [
 .card-stats {
   display: flex;
   align-items: center;
-  gap: 0;
   padding: 16px 0 0;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -508,10 +521,14 @@ const features = [
   max-width: 90px;
   line-height: 1.3;
 }
+
+/* ── Separator override ── */
 .stat-divider {
-  width: 1px;
-  height: 36px;
-  background: rgba(255, 255, 255, 0.07);
+  width: 1px !important;
+  height: 36px !important;
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 /* ── Floating pills ── */
@@ -547,18 +564,20 @@ const features = [
   color: #4b5563;
   margin-bottom: 4px;
 }
+
+/* ── Progress override ── */
 .pill-bar {
-  width: 80px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
-  overflow: hidden;
+  width: 80px !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
-.pill-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #6366f1, #34d399);
-  border-radius: 2px;
+.pill-bar :deep([role="progressbar"] > div),
+.pill-bar :deep(.bg-primary) {
+  background: linear-gradient(90deg, #6366f1, #34d399) !important;
+  border-radius: 2px !important;
 }
+
 .pill-pct {
   font-size: 0.82rem;
   font-weight: 600;
