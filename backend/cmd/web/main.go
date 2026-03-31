@@ -10,6 +10,8 @@ import (
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
@@ -26,6 +28,8 @@ func main() {
 	panicOnError(app.DB.AutoMigrate(
 		new(userman.User),
 		new(courseman.Course),
+		new(noteman.Note),
+		new(quizman.Quiz),
 	))
 
 	addDefaultRecordsIfNotExist()

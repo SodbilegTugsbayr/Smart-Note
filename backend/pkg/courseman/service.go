@@ -56,12 +56,16 @@ func (s *Service) Count(filter *Filter) (int, error) {
 	return int(count), nil
 }
 
-func (s *Service) GetAll(filter *Filter, page, size int) ([]*Course, int, error) {
+func (s *Service) GetAll(filter *Filter, page, size int, preloads ...string) ([]*Course, int, error) {
 	query := s.parseFilter(filter)
 
 	var count int64
 	if err := query.Model(&Course{}).Count(&count).Error; err != nil {
 		return nil, 0, err
+	}
+
+	for _, preload := range preloads {
+		query = query.Preload(preload)
 	}
 
 	if size > 0 {

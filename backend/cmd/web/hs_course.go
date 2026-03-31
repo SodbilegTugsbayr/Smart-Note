@@ -11,6 +11,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
@@ -33,7 +34,7 @@ func getCourse(w http.ResponseWriter, r *http.Request) {
 	filter.Keyword = q.Get("keyword")
 	filter.OrderBy = q.Get("order_by")
 
-	course, total, err := app.Courses.GetAll(filter, page, size)
+	course, total, err := app.Courses.GetAll(filter, page, size, "Notes")
 	if err != nil {
 		oapi.ServerError(w, err)
 		return
@@ -101,15 +102,35 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 		course.Sections = sections
 	}
 
-	if len(course.Sections) > 0 {
-
-	}
-
-	_, err = app.Courses.Save(course)
+	savedCourse, err := app.Courses.Save(course)
 	if err != nil {
 		oapi.ServerError(w, err)
 		return
 	}
 
-	oapi.SendResp(w, course)
+	var note *noteman.Note
+	if len(course.Sections) > 0 {
+		for _, s := range course.Sections {
+			note = &noteman.Note{
+				CourseID:      savedCourse.ID,
+				Title:         s.SectionName,
+				IsFromBook:    true,
+				StartPage:     s.StartPage,
+				EndPage:       s.EndPage,
+				FilePath:      savedCourse.FilePath,
+				Status:        noteman.STATUS_IN_PROGRESS,
+				ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
+			}
+
+			_, err := app.Notes.Save(note)
+
+			// go app.Processor.ProcessNote(savedNote)
+			if err != nil {
+				oapi.ServerError(w, err)
+				return
+			}
+		}
+	}
+
+	oapi.SendResp(w, savedCourse)
 }
