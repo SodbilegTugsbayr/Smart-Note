@@ -44,9 +44,11 @@ func routes() http.Handler {
 		r.Get("/me", me)
 		r.Post("/me", updateUserInfo)
 		r.HandleFunc("/ws", app.CustomerWSConnections.Handler)
-		r.Get("/logout", logout)
+		r.Post("/logout", logout)
 
-		// TODO: Future plan: Admin
+		r.Route("/course", func(r chi.Router) {
+			r.Get("/", getCourse)
+		})
 		r.With(requireAdmin).Route("/users", func(r chi.Router) {
 			r.Get("/", getUsers)
 			r.Post("/", editUser)

@@ -52,9 +52,14 @@ export default defineNuxtConfig({
     },
   },
 
+  modules: [
+    'nuxt-lucide-icons',
+  ],
+  
+
   components: [
-    { path: '~/components/ui', pathPrefix: false },
-    '~/components',
+    { path: '~/app/components/ui', pathPrefix: false },
+    '~/app/components',
   ],
   
   vite: {
@@ -65,9 +70,16 @@ export default defineNuxtConfig({
 
   nitro,
 
+  lucide: {
+    namePrefix: 'Icon',
+  },
+
   app: {
     head: {
       title: "Smart Note",
+      htmlAttrs: {
+        class: 'dark',
+      },
       titleTemplate: "%s",
       meta: [
         { charset: "utf-8" },

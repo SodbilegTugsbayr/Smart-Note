@@ -20,7 +20,6 @@ func ping(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-	app.InfoLog.Println("HEre")
 	app.Session.Remove(r, "auth_user_id")
 	app.Session.Remove(r, "oauth2_provider_name")
 	http.Redirect(w, r, "/", http.StatusSeeOther)
