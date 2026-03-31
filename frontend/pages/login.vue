@@ -28,7 +28,7 @@ async function submit() {
 
 <template>
   <div class="login-root">
-    <!-- Ambient background matching landing page -->
+    <!-- Ambient background -->
     <div class="bg-orb bg-orb-1" />
     <div class="bg-orb bg-orb-2" />
     <div class="bg-grid" />
@@ -40,72 +40,76 @@ async function submit() {
         Smart Note
       </NuxtLink>
 
-      <div class="login-card">
-        <!-- Header -->
-        <div class="card-header">
-          <h1 class="card-title">Өдрийн мэнд</h1>
-          <p class="card-subtitle">Бүртгэлтэй мэйл болон нууц үгээ ашиглан нэвтэрнэ үү.</p>
-        </div>
+      <Card class="login-card">
+        <CardHeader class="card-header">
+          <CardTitle class="card-title">Өдрийн мэнд</CardTitle>
+          <CardDescription class="card-subtitle">
+            Бүртгэлтэй мэйл болон нууц үгээ ашиглан нэвтэрнэ үү.
+          </CardDescription>
+        </CardHeader>
 
-        <!-- Error alert -->
-        <div v-if="error" class="alert-error" role="alert">
-          <span class="alert-icon">⚠</span>
-          <span>{{ error }}</span>
-        </div>
+        <CardContent>
+          <!-- Error alert -->
+          <Alert v-if="error" variant="destructive" class="alert-error">
+            <AlertDescription class="flex items-center gap-2">
+              <span>⚠</span>
+              <span>{{ error }}</span>
+            </AlertDescription>
+          </Alert>
 
-        <!-- Form -->
-        <form @submit.prevent="submit" class="login-form">
-          <!-- Email -->
-          <div class="field">
-            <label class="field-label" for="email">Мэйл</label>
-            <input
-              id="email"
-              v-model="form.email"
-              type="email"
-              required
-              placeholder="you@example.com"
-              class="field-input"
-              :class="{ 'field-input--error': error }"
-              autocomplete="email"
-            />
-          </div>
-
-          <!-- Password -->
-          <div class="field">
-            <div class="field-label-row">
-              <label class="field-label" for="password">Нууц үг</label>
+          <!-- Form -->
+          <form @submit.prevent="submit" class="login-form">
+            <!-- Email -->
+            <div class="field">
+              <Label for="email" class="field-label">Мэйл</Label>
+              <Input
+                id="email"
+                v-model="form.email"
+                type="email"
+                required
+                placeholder="you@example.com"
+                class="field-input"
+                :class="{ 'field-input--error': error }"
+                autocomplete="email"
+              />
             </div>
-            <input
-              id="password"
-              v-model="form.password"
-              type="password"
-              required
-              placeholder="••••••••"
-              class="field-input"
-              :class="{ 'field-input--error': error }"
-              autocomplete="current-password"
-            />
-          </div>
 
-          <!-- Submit -->
-          <button type="submit" class="btn-submit" :disabled="loading">
-            <span v-if="!loading">
-              Нэвтрэх
-              <span class="btn-arrow">→</span>
-            </span>
-            <span v-else class="btn-loading">
-              <span class="spinner" />
-              Түр хүлээнэ үү...
-            </span>
-          </button>
-        </form>
+            <!-- Password -->
+            <div class="field">
+              <Label for="password" class="field-label">Нууц үг</Label>
+              <Input
+                id="password"
+                v-model="form.password"
+                type="password"
+                required
+                placeholder="••••••••"
+                class="field-input"
+                :class="{ 'field-input--error': error }"
+                autocomplete="current-password"
+              />
+            </div>
 
-        <!-- Footer link -->
-        <p class="card-footer">
-          Бүртгүүлэх үү?
-          <NuxtLink to="/signup" class="footer-link">Шинэ бүртгэл үүсгэх</NuxtLink>
-        </p>
-      </div>
+            <!-- Submit -->
+            <Button type="submit" :disabled="loading" class="btn-submit">
+              <span v-if="!loading">
+                Нэвтрэх
+                <span class="btn-arrow">→</span>
+              </span>
+              <span v-else class="btn-loading">
+                <span class="spinner" />
+                Түр хүлээнэ үү...
+              </span>
+            </Button>
+          </form>
+        </CardContent>
+
+        <CardFooter class="card-footer">
+          <p>
+            Бүртгүүлэх үү?
+            <NuxtLink to="/signup" class="footer-link">Шинэ бүртгэл үүсгэх</NuxtLink>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   </div>
 </template>
@@ -126,7 +130,7 @@ async function submit() {
   justify-content: center;
 }
 
-/* ── Ambient (same as landing) ── */
+/* ── Ambient ── */
 .bg-orb {
   position: fixed;
   border-radius: 50%;
@@ -193,56 +197,45 @@ async function submit() {
   font-size: 0.9rem;
 }
 
-/* ── Card ── */
+/* ── Card (override shadcn) ── */
 .login-card {
   width: 100%;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 36px 32px;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px !important;
   backdrop-filter: blur(20px);
   box-shadow:
     0 32px 64px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 /* ── Card header ── */
 .card-header {
-  margin-bottom: 28px;
   text-align: center;
+  padding-bottom: 0 !important;
 }
 .card-title {
-  font-family: "Instrument Serif", serif;
-  font-size: 1.9rem;
-  letter-spacing: -0.03em;
-  color: #f0f0f5;
-  margin: 0 0 8px;
-  font-weight: 400;
+  font-family: "Instrument Serif", serif !important;
+  font-size: 1.9rem !important;
+  letter-spacing: -0.03em !important;
+  color: #f0f0f5 !important;
+  font-weight: 400 !important;
 }
 .card-subtitle {
-  font-size: 0.875rem;
-  color: #4b5563;
-  line-height: 1.5;
-  margin: 0;
+  font-size: 0.875rem !important;
+  color: #4b5563 !important;
+  line-height: 1.5 !important;
 }
 
-/* ── Error alert ── */
+/* ── Error alert (override shadcn destructive) ── */
 .alert-error {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-  font-size: 0.85rem;
-  padding: 11px 14px;
-  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.25) !important;
+  color: #fca5a5 !important;
+  font-size: 0.85rem !important;
+  border-radius: 10px !important;
   margin-bottom: 20px;
   animation: fadeUp 0.3s ease both;
-}
-.alert-icon {
-  font-size: 1rem;
-  flex-shrink: 0;
 }
 
 /* ── Form ── */
@@ -258,80 +251,73 @@ async function submit() {
   flex-direction: column;
   gap: 7px;
 }
-.field-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
 .field-label {
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: #9ca3af;
-  letter-spacing: 0.01em;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  color: #9ca3af !important;
+  letter-spacing: 0.01em !important;
 }
+
+/* ── Input (override shadcn) ── */
 .field-input {
-  width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  color: #f0f0f5;
-  font-family: "DM Sans", sans-serif;
-  font-size: 0.925rem;
-  padding: 11px 14px;
-  outline: none;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  color: #f0f0f5 !important;
+  font-family: "DM Sans", sans-serif !important;
+  font-size: 0.925rem !important;
   transition:
     border-color 0.2s,
     background 0.2s,
-    box-shadow 0.2s;
-  box-sizing: border-box;
+    box-shadow 0.2s !important;
 }
 .field-input::placeholder {
-  color: #374151;
+  color: #374151 !important;
 }
-.field-input:focus {
-  border-color: rgba(99, 102, 241, 0.6);
-  background: rgba(99, 102, 241, 0.05);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+.field-input:focus-visible {
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+  outline: none !important;
 }
 .field-input--error {
-  border-color: rgba(239, 68, 68, 0.4);
+  border-color: rgba(239, 68, 68, 0.4) !important;
 }
-.field-input--error:focus {
-  border-color: rgba(239, 68, 68, 0.6);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+.field-input--error:focus-visible {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
 }
 
-/* ── Submit button ── */
+/* ── Submit button (override shadcn) ── */
 .btn-submit {
   width: 100%;
   margin-top: 6px;
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-  border: none;
-  color: #fff;
-  font-family: "DM Sans", sans-serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  padding: 13px 20px;
-  border-radius: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  font-family: "DM Sans", sans-serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  padding: 13px 20px !important;
+  height: auto !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
   transition:
     opacity 0.2s,
     transform 0.15s,
-    box-shadow 0.2s;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    box-shadow 0.2s !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3) !important;
 }
 .btn-submit:hover:not(:disabled) {
-  opacity: 0.92;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
+  opacity: 0.92 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4) !important;
 }
 .btn-submit:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  opacity: 0.6 !important;
 }
 .btn-arrow {
   transition: transform 0.2s;
@@ -339,7 +325,6 @@ async function submit() {
 .btn-submit:hover:not(:disabled) .btn-arrow {
   transform: translateX(3px);
 }
-
 .btn-loading {
   display: flex;
   align-items: center;
@@ -361,10 +346,13 @@ async function submit() {
 
 /* ── Footer ── */
 .card-footer {
-  margin: 24px 0 0;
-  text-align: center;
+  justify-content: center !important;
+  padding-top: 0 !important;
+}
+.card-footer p {
   font-size: 0.85rem;
   color: #4b5563;
+  text-align: center;
 }
 .footer-link {
   color: #818cf8;

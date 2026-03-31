@@ -52,6 +52,11 @@ export default defineNuxtConfig({
     },
   },
 
+  components: [
+    { path: '~/components/ui', pathPrefix: false },
+    '~/components',
+  ],
+  
   vite: {
     plugins: [
       tailwindcss(),
