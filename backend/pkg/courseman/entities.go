@@ -5,19 +5,17 @@ import (
 )
 
 const (
-	ROLE_BASIC = "basic"
-	ROLE_ADMIN = "admin"
-
-	AUTH_TYPE_BASIC    = "username_password"
-	AUTH_TYPE_FACEBOOK = "facebook"
-	AUTH_TYPE_GOOGLE   = "google"
+	STATUS_IN_PROGRESS = "in_progress"
+	STATUS_COMPLETED   = "completed"
 )
 
 type Course struct {
 	entities.Model
-	UserID   int    `json:"user_id"`
-	Title    string `json:"title"`
-	Status   string `json:"status"`
-	Progress int    `json:"progress"`
-	FilePath string `json:"file_url"`
+	UserID      int    `json:"user_id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	Progress    int    `json:"progress"`
+	FilePath    string `json:"file_url"`
+	Icon        string `json:"icon"`
 }

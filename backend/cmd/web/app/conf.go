@@ -19,7 +19,8 @@ type conf struct {
 	SessionSecret string `yaml:"session_secret"`
 	DSN           string `yaml:"dsn"`
 	TimezoneLoc   string `yaml:"timezone_loc"`
-	ImagePath     string `yaml:"image_path"`
+	FilePath      string `yaml:"file_path"`
+	BookPath      string `yaml:"book_path"`
 	OAuth2        struct {
 		Google   oauthConfig `yaml:"google"`
 		Facebook oauthConfig `yaml:"facebook"`

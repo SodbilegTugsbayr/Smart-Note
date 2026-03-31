@@ -89,3 +89,31 @@
     font-family: "Instrument Serif", serif;
   }
 }
+
+@layer components {
+  .font-heading {
+    font-family: var(--font-heading);
+  }
+  .font-body {
+    font-family: var(--font-body);
+  }
+  .glass-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(20px);
+  }
+  .glass-card-hover:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+  }
+  .gradient-indigo {
+    background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  }
+  .gradient-teal {
+    background: linear-gradient(135deg, #14b8a6 0%, #2dd4bf 100%);
+  }
+  .dot-grid {
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}

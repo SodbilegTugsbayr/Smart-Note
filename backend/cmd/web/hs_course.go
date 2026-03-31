@@ -30,6 +30,7 @@ func getCourse(w http.ResponseWriter, r *http.Request) {
 	filter := new(courseman.Filter)
 	filter.UserID = loggedUser.ID
 	filter.Keyword = q.Get("keyword")
+	filter.OrderBy = q.Get("order_by")
 
 	course, total, err := app.Courses.GetAll(filter, page, size)
 	if err != nil {
@@ -51,55 +52,43 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body := new(courseman.Course)
+	course := new(courseman.Course)
 
-	body.ID, _ = strconv.Atoi(r.FormValue("id"))
-	body.Title = strings.TrimSpace(r.FormValue("title"))
-	body.Status = r.FormValue("status")
-
-	body.UserID = loggedUser.ID
-
-	if body.Title == "" {
+	title := strings.TrimSpace(r.FormValue("title"))
+	if title == "" {
 		oapi.CustomError(w, http.StatusBadRequest, "Title is required")
 		return
 	}
 
-	if body.Status == "" {
-		body.Status = "in_progress"
+	description := strings.TrimSpace(r.FormValue("description"))
+	if description == "" {
+		oapi.CustomError(w, http.StatusBadRequest, "Description is required")
+		return
 	}
+
+	icon := strings.TrimSpace(r.FormValue("icon"))
+	if icon == "" {
+		icon = "BookOpen"
+	}
+
+	course.Title = title
+	course.Description = description
+	course.Icon = icon
+	course.UserID = loggedUser.ID
+	course.Status = courseman.STATUS_IN_PROGRESS
 
 	file, header, err := r.FormFile("file")
 	if err == nil {
 		defer file.Close()
-
 		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), header.Filename)
-		body.FilePath = fileName
+		course.FilePath = fileName
 	}
 
-	if body.ID == 0 {
-		_, err = app.Courses.Save(body)
-	} else {
-		existing, fetchErr := app.Courses.GetByID(body.ID)
-		if fetchErr != nil {
-			oapi.CustomError(w, http.StatusNotFound, "Course not found")
-			return
-		}
-		if existing.UserID != loggedUser.ID {
-			oapi.Forbidden(w)
-			return
-		}
-
-		if body.FilePath == "" {
-			body.FilePath = existing.FilePath
-		}
-
-		_, err = app.Courses.Save(body)
-	}
-
+	_, err = app.Courses.Save(course)
 	if err != nil {
 		oapi.ServerError(w, err)
 		return
 	}
 
-	oapi.SendResp(w, body)
+	oapi.SendResp(w, course)
 }

@@ -134,8 +134,6 @@ async function submit() {
 </template>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap");
-
 .login-root {
   min-height: 100vh;
   background: #08090c;

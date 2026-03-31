@@ -50,7 +50,6 @@ func routes() http.Handler {
 
 		r.With(requireAdmin).Route("/users", func(r chi.Router) {
 			r.Get("/", getUsers)
-			r.Post("/", editUser)
 			r.With(setChosenUser).Route("/{UserID}", func(r chi.Router) {
 				r.Get("/", getUser)
 				r.Put("/", editUser)
@@ -60,7 +59,7 @@ func routes() http.Handler {
 	})
 
 	workDir, _ := os.Getwd()
-	filesDir := http.Dir(filepath.Join(workDir, app.Config.ImagePath))
+	filesDir := http.Dir(filepath.Join(workDir, app.Config.FilePath))
 	FileServer(r, "/pub/images", filesDir)
 
 	return r

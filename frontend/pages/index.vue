@@ -8,13 +8,18 @@ const {
   status,
   refresh,
 } = await useFetch("/api/course", {
-  query: { sort: "-created_date" },
+  query: { order_by: "created_at" },
   default: () => [],
 })
 
-onMounted(() => {
+const onCreated = () => {
+  showCreate.value = false
   refresh()
-})
+}
+
+const confirmDelete = () => {}
+
+const openEditDialog = () => {}
 </script>
 
 <template>
@@ -50,15 +55,15 @@ onMounted(() => {
 
     <!-- Course grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <CourseCard v-for="course in courses.items" :key="course.id" :course="course" />
+      <CourseCard
+        v-for="course in courses.items"
+        :key="course.id"
+        :course="course"
+        @edit="openEditDialog"
+        @delete="confirmDelete"
+      />
     </div>
 
-    <!-- Modal -->
-    <CourseCreateModal :open="showCreate" @close="showCreate = false" />
+    <CourseCreateModal :open="showCreate" @close="showCreate = false" @created="onCreated" />
   </div>
 </template>
-<style lang="css">
-.gradient-indigo {
-  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
-}
-</style>
