@@ -73,13 +73,15 @@ function buildSections() {
       for (const t of selectedTopics) {
         sections.push({
           section_name: `${ch.title} — ${t.title}`,
-          page_range: `${t.startPage}-${t.endPage}`,
+          start_page: t.startPage,
+          end_page: t.endPage,
         })
       }
     } else if (ch.selected) {
       sections.push({
         section_name: ch.title,
-        page_range: `${ch.startPage}-${ch.endPage}`,
+        start_page: ch.startPage,
+        end_page: ch.endPage,
       })
     }
   }
@@ -110,12 +112,73 @@ async function handleFileDrop(files) {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
     const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
-    extractedChapters.value = await extractStructure(pdf)
+    extractedChapters.value = await getPdfStructure(pdf)
   } catch (e) {
     console.error("PDF parse error:", e)
   } finally {
     extracting.value = false
   }
+}
+
+async function getPdfStructure(pdfDoc) {
+  const rawOutline = await pdfDoc.getOutline()
+  const totalPages = pdfDoc.numPages
+
+  if (!rawOutline) {
+    console.log("No internal table of contents found.")
+    return []
+  }
+
+  const flattenedItems = []
+
+  async function traverse(items, depth = 0) {
+    for (const item of items) {
+      let pageIndex = -1
+      try {
+        if (item.dest) {
+          const dest =
+            typeof item.dest === "string" ? await pdfDoc.getDestination(item.dest) : item.dest
+          if (dest) pageIndex = await pdfDoc.getPageIndex(dest[0])
+        }
+      } catch {
+        console.warn(`Could not resolve page for: ${item.title}`)
+      }
+
+      const node = {
+        title: item.title,
+        startPage: pageIndex + 1,
+        endPage: totalPages,
+        depth,
+        selected: true,
+      }
+
+      if (depth === 0) {
+        node.topics = []
+        flattenedItems.push(node)
+      } else {
+        const parentChapter = [...flattenedItems].reverse().find((n) => n.depth === 0)
+        if (parentChapter) {
+          parentChapter.topics.push(node)
+        }
+      }
+
+      if (item.items?.length > 0) {
+        await traverse(item.items, depth + 1)
+      }
+    }
+  }
+
+  await traverse(rawOutline)
+
+  const allNodes = flattenedItems.flatMap((ch) => [ch, ...ch.topics])
+  for (let i = 0; i < allNodes.length - 1; i++) {
+    const next = allNodes[i + 1]
+    if (next.startPage > 0) {
+      allNodes[i].endPage = Math.max(allNodes[i].startPage, next.startPage - 1)
+    }
+  }
+
+  return flattenedItems
 }
 
 function clearFile() {
@@ -150,72 +213,6 @@ function loadScript(src) {
     })
     document.head.appendChild(s)
   })
-}
-
-async function extractStructure(pdf) {
-  const chapterPatterns = [
-    /^(chapter|бүлэг|хэсэг)\s*\d*/i,
-    /^\d+[\.\s]+[A-ZА-ЯӨҮ]/,
-    /^[IVXLC]+[\.\s]+\w/,
-  ]
-  const sectionPatterns = [/^\d+\.\d+[\.\s]/, /^(section|дэд\s*сэдэв|сэдэв)\s*\d*/i]
-
-  const chapters = []
-  let currentChapter = null
-
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum)
-    const lines = groupIntoLines((await page.getTextContent()).items)
-
-    for (const line of lines) {
-      const text = line.trim()
-      if (!text || text.length > 80) continue
-
-      if (chapterPatterns.some((p) => p.test(text))) {
-        currentChapter = {
-          id: `ch-${chapters.length}`,
-          title: text,
-          startPage: pageNum,
-          endPage: pageNum,
-          selected: true,
-          topics: [],
-        }
-        chapters.push(currentChapter)
-      } else if (sectionPatterns.some((p) => p.test(text)) && currentChapter) {
-        currentChapter.topics.push({
-          id: `t-${chapters.length - 1}-${currentChapter.topics.length}`,
-          title: text,
-          startPage: pageNum,
-          endPage: pageNum,
-          selected: true,
-        })
-      }
-    }
-
-    if (currentChapter) {
-      currentChapter.endPage = pageNum
-      const topics = currentChapter.topics
-      if (topics.length) topics[topics.length - 1].endPage = pageNum
-    }
-  }
-
-  // Fix page ranges
-  for (const ch of chapters) {
-    for (let i = 0; i < ch.topics.length - 1; i++)
-      ch.topics[i].endPage = ch.topics[i + 1].startPage - 1
-  }
-  for (let i = 0; i < chapters.length - 1; i++) chapters[i].endPage = chapters[i + 1].startPage - 1
-
-  return chapters
-}
-
-function groupIntoLines(items) {
-  const lineMap = {}
-  for (const item of items) {
-    const y = Math.round(item.transform[5])
-    ;(lineMap[y] ??= []).push(item.str)
-  }
-  return Object.values(lineMap).map((parts) => parts.join(" "))
 }
 
 // ── Chapter / topic selection ─────────────────────────────────────────────────

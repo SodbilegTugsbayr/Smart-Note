@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -44,6 +45,12 @@ func getCourse(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type Section struct {
+	SectionName string `json:"section_name"`
+	StartPage   int    `json:"start_page"`
+	EndPage     int    `json:"end_page"`
+}
+
 func saveCourse(w http.ResponseWriter, r *http.Request) {
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
@@ -82,6 +89,20 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 		defer file.Close()
 		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), header.Filename)
 		course.FilePath = fileName
+
+		var sections []*courseman.Section
+		sectionsRaw := strings.TrimSpace(r.FormValue("sections"))
+		if sectionsRaw != "" {
+			if err := json.Unmarshal([]byte(sectionsRaw), &sections); err != nil {
+				oapi.CustomError(w, http.StatusBadRequest, "Invalid sections format")
+				return
+			}
+		}
+		course.Sections = sections
+	}
+
+	if len(course.Sections) > 0 {
+
 	}
 
 	_, err = app.Courses.Save(course)

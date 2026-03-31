@@ -1,5 +1,4 @@
 export default defineNuxtRouteMiddleware(async (to) => {
-  console.log("HEre")
   const publicPaths = ["/login", "/signup", "/landing"]
   await useFetchMe()
   const user = useUser()
