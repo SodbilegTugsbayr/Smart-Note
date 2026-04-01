@@ -86,7 +86,7 @@ func (s *Service) GetAll(filter *Filter, page, size int, preloads ...string) ([]
 func (s *Service) Get(data *Course) (*Course, error) {
 	var course *Course
 
-	if err := s.db.Where("self_deleted_at IS NULL").First(&course, data).Error; err != nil {
+	if err := s.db.First(&course, data).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {
@@ -111,10 +111,15 @@ func (s *Service) GetWithAuthTypes(data *Course, authTypes []string) (*Course, e
 	return course, nil
 }
 
-func (s *Service) GetByID(ID int) (*Course, error) {
+func (s *Service) GetByID(ID int, preloads ...string) (*Course, error) {
+	query := s.db
 	var course *Course
 
-	if err := s.db.Where("self_deleted_at IS NULL").First(&course, ID).Error; err != nil {
+	for _, preload := range preloads {
+		query = query.Preload(preload)
+	}
+
+	if err := query.First(&course, ID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {

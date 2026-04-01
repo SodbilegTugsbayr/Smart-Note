@@ -8,6 +8,7 @@ import (
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/go-chi/chi"
 )
@@ -95,6 +96,25 @@ func setChosenUser(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), app.ContextKeyChosenUser, user)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func setChosenCourse(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := strconv.Atoi(chi.URLParam(r, "CourseID"))
+
+		note, err := app.Courses.GetByID(id, "Notes")
+		if err != nil {
+			if errors.Is(err, courseman.ErrNotFound) {
+				oapi.NotFound(w)
+			} else {
+				oapi.ServerError(w, err)
+			}
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), app.ContextKeyChosenCourse, note)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

@@ -20,9 +20,17 @@ type conf struct {
 	DSN           string `yaml:"dsn"`
 	TimezoneLoc   string `yaml:"timezone_loc"`
 	FilePath      string `yaml:"file_path"`
-	BookPath      string `yaml:"book_path"`
 	OAuth2        struct {
 		Google   oauthConfig `yaml:"google"`
 		Facebook oauthConfig `yaml:"facebook"`
 	} `yaml:"oauth2"`
+	EguneAPI struct {
+		BaseURL string `yaml:"base_url"`
+		APIKey  string `yaml:"api_key"`
+		Model   string `yaml:"model"`
+	} `yaml:"egune_api"`
+	OCRAPI struct {
+		BaseURL string `yaml:"base_url"`
+		APIKey  string `yaml:"api_key"`
+	} `yaml:"ocr_api"`
 }

@@ -149,7 +149,7 @@ async function getPdfStructure(pdfDoc) {
         startPage: pageIndex + 1,
         endPage: totalPages,
         depth,
-        selected: true,
+        selected: false,
       }
 
       if (depth === 0) {

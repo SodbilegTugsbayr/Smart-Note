@@ -82,7 +82,7 @@ func (s *Service) GetAll(filter *Filter, page, size int) ([]*Quiz, int, error) {
 func (s *Service) Get(data *Quiz) (*Quiz, error) {
 	var quiz *Quiz
 
-	if err := s.db.Where("self_deleted_at IS NULL").First(&quiz, data).Error; err != nil {
+	if err := s.db.First(&quiz, data).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {
@@ -110,7 +110,7 @@ func (s *Service) GetWithAuthTypes(data *Quiz, authTypes []string) (*Quiz, error
 func (s *Service) GetByID(ID int) (*Quiz, error) {
 	var quiz *Quiz
 
-	if err := s.db.Where("self_deleted_at IS NULL").First(&quiz, ID).Error; err != nil {
+	if err := s.db.First(&quiz, ID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {

@@ -22,9 +22,15 @@ const isCompleted = computed(() => props.course.status === "completed")
             <component :is="`${course.icon}Icon`" class="w-5 h-5" />
           </div>
           <div>
-            <p class="font-heading text-lg text-foreground leading-tight">{{ course.title }}</p>
+            <p class="font-heading text-lg text-foreground leading-tight">
+              {{ course.title.length > 10 ? `${course.title.slice(0, 10)}...` : course.title }}
+            </p>
             <p v-if="course.description" class="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-              {{ course.description }}
+              {{
+                course.description.length > 20
+                  ? `${course.description.slice(0, 20)}...`
+                  : course.description
+              }}
             </p>
           </div>
         </div>

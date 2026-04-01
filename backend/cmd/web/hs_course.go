@@ -3,19 +3,23 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
+	"github.com/google/uuid"
 )
 
-func getCourse(w http.ResponseWriter, r *http.Request) {
+func getUserCourses(w http.ResponseWriter, r *http.Request) {
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
 	q := r.URL.Query()
@@ -85,25 +89,43 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 	course.UserID = loggedUser.ID
 	course.Status = courseman.STATUS_IN_PROGRESS
 
+	courseDir := filepath.Join(app.Config.FilePath, uuid.NewString())
+	courseDir, _ = filepath.Abs(courseDir)
+	course.ContainerPath = courseDir
+
 	file, header, err := r.FormFile("file")
 	if err == nil {
 		defer file.Close()
-		fileName := fmt.Sprintf("%d_%s", time.Now().Unix(), header.Filename)
-		course.FilePath = fileName
+		bookDir := filepath.Join(courseDir, "book")
+		if err := os.MkdirAll(bookDir, 0755); err != nil {
+			oapi.ServerError(w, err)
+			return
+		}
 
+		path, err := validateAndSaveFileToDisk(header, bookDir)
+		if err != nil {
+			_ = os.RemoveAll(courseDir)
+			oapi.CustomError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		course.FilePath = path
 		var sections []*courseman.Section
 		sectionsRaw := strings.TrimSpace(r.FormValue("sections"))
 		if sectionsRaw != "" {
 			if err := json.Unmarshal([]byte(sectionsRaw), &sections); err != nil {
+				_ = os.RemoveAll(courseDir)
 				oapi.CustomError(w, http.StatusBadRequest, "Invalid sections format")
 				return
 			}
 		}
+
 		course.Sections = sections
 	}
 
 	savedCourse, err := app.Courses.Save(course)
 	if err != nil {
+		_ = os.RemoveAll(courseDir)
 		oapi.ServerError(w, err)
 		return
 	}
@@ -122,15 +144,75 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 				ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
 			}
 
-			_, err := app.Notes.Save(note)
-
-			// go app.Processor.ProcessNote(savedNote)
+			savedNote, err := app.Notes.Save(note)
 			if err != nil {
 				oapi.ServerError(w, err)
 				return
 			}
+
+			go processNote(savedNote)
 		}
 	}
 
 	oapi.SendResp(w, savedCourse)
+}
+
+func getCourse(w http.ResponseWriter, r *http.Request) {
+	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
+	oapi.SendResp(w, chosenCourse)
+}
+
+func validateAndSaveFileToDisk(fh *multipart.FileHeader, dir string) (string, error) {
+	const maxFileSize = 50 << 20
+
+	if fh.Size > maxFileSize {
+		return "", fmt.Errorf("file too large: max 10MB allowed")
+	}
+
+	file, err := fh.Open()
+	if err != nil {
+		app.ErrorLog.Println(err)
+		return "", err
+	}
+	defer file.Close()
+
+	buff := make([]byte, 512)
+	n, err := file.Read(buff)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+
+	mimeType := http.DetectContentType(buff[:n])
+
+	allowed := map[string]bool{
+		"image/jpeg":      true,
+		"image/png":       true,
+		"image/gif":       true,
+		"image/webp":      true,
+		"application/pdf": true,
+	}
+
+	if !allowed[mimeType] {
+		return "", fmt.Errorf("unsupported file type: %s", mimeType)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+
+	dstPath := filepath.Join(dir, fmt.Sprintf("%v%v", 0, filepath.Ext(fh.Filename)))
+
+	dstFile, err := os.OpenFile(dstPath, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		_ = dstFile.Close()
+	}()
+
+	if _, err := io.Copy(dstFile, file); err != nil {
+		return "", err
+	}
+
+	return dstPath, nil
 }

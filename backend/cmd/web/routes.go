@@ -44,8 +44,11 @@ func routes() http.Handler {
 		r.Post("/logout", logout)
 
 		r.Route("/course", func(r chi.Router) {
-			r.Get("/", getCourse)
+			r.Get("/", getUserCourses)
 			r.Post("/", saveCourse)
+			r.With(setChosenCourse).Route("/{CourseID}", func(r chi.Router) {
+				r.Get("/", getCourse)
+			})
 		})
 
 		r.With(requireAdmin).Route("/users", func(r chi.Router) {

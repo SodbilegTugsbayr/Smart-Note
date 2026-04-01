@@ -82,7 +82,7 @@ func (s *Service) GetAll(filter *Filter, page, size int) ([]*Note, int, error) {
 func (s *Service) Get(data *Note) (*Note, error) {
 	var note *Note
 
-	if err := s.db.Where("self_deleted_at IS NULL").First(&note, data).Error; err != nil {
+	if err := s.db.First(&note, data).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {
@@ -107,10 +107,10 @@ func (s *Service) GetWithAuthTypes(data *Note, authTypes []string) (*Note, error
 	return note, nil
 }
 
-func (s *Service) GetByID(ID int) (*Note, error) {
+func (s *Service) GetByID(ID int, preloads ...string) (*Note, error) {
 	var note *Note
 
-	if err := s.db.Where("self_deleted_at IS NULL").First(&note, ID).Error; err != nil {
+	if err := s.db.First(&note, ID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {
