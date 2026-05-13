@@ -264,6 +264,7 @@ const isSubmitDisabled = computed(
           <span v-else>Файл оруулах</span>
         </DialogTitle>
       </DialogHeader>
+      <DialogDescription></DialogDescription>
 
       <p v-if="errorMessage" class="text-sm text-red-400 mt-1">{{ errorMessage }}</p>
 

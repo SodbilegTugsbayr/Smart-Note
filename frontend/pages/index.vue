@@ -29,7 +29,7 @@ const openEditDialog = () => {}
     <div class="flex items-center justify-between mb-8">
       <div>
         <h1 class="font-heading text-3xl sm:text-4xl text-foreground">Миний хичээлүүд</h1>
-        <p class="text-sm text-muted-foreground mt-1">AI-ийн тусламжтай суралцах платформ</p>
+        <!-- <p class="text-sm text-muted-foreground mt-1">AI-ийн тусламжтай суралцах платформ</p> -->
       </div>
       <button
         @click="showCreate = true"

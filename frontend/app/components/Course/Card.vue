@@ -43,7 +43,7 @@ const isCompleted = computed(() => props.course.status === "completed")
                 : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
             "
           >
-            {{ isCompleted ? "Дуусгасан" : "Үргэлжилж байгаа" }}
+            {{ isCompleted ? "Дууссан" : "Үргэлжилж байгаа" }}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
