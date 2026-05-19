@@ -73,12 +73,12 @@ async function handleAdd() {
       <Input
         v-model="newTerm"
         placeholder="Нэр томьёо"
-        class="bg-white/5 border-white/10 text-foreground"
+        class="bg-white border-slate-200 text-foreground"
       />
       <Textarea
         v-model="newDef"
         placeholder="Тодорхойлолт"
-        class="bg-white/5 border-white/10 text-foreground h-20"
+        class="bg-white border-slate-200 text-foreground h-20"
       />
       <button
         @click="handleAdd"

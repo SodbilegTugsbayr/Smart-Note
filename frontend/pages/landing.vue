@@ -144,8 +144,8 @@ const features = [
 /* ── Root ── */
 .landing-root {
   min-height: 100vh;
-  background: #08090c;
-  color: #e8e9f0;
+  background: #f8fafc;
+  color: #0f172a;
   font-family: "DM Sans", sans-serif;
   position: relative;
   overflow: hidden;
@@ -162,14 +162,14 @@ const features = [
 .bg-orb-1 {
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
   top: -150px;
   right: -100px;
 }
 .bg-orb-2 {
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.1) 0%, transparent 70%);
   bottom: -100px;
   left: -80px;
 }
@@ -177,8 +177,8 @@ const features = [
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   z-index: 0;
   pointer-events: none;
@@ -189,7 +189,7 @@ const features = [
   position: relative;
   z-index: 10;
   padding: 20px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(12px);
 }
 .navbar-inner {
@@ -207,7 +207,7 @@ const features = [
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #f0f0f5;
+  color: #0f172a;
 }
 .brand-icon {
   color: #818cf8;
@@ -223,7 +223,7 @@ const features = [
 .btn-ghost {
   background: transparent !important;
   border: none !important;
-  color: #9ca3af !important;
+  color: #64748b !important;
   font-family: "DM Sans", sans-serif;
   font-size: 0.875rem;
   font-weight: 500;
@@ -232,8 +232,8 @@ const features = [
   box-shadow: none !important;
 }
 .btn-ghost:hover {
-  color: #e8e9f0 !important;
-  background: transparent !important;
+  color: #0f172a !important;
+  background: rgba(15, 23, 42, 0.05) !important;
 }
 .btn-primary {
   background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%) !important;
@@ -257,9 +257,9 @@ const features = [
   transform: translateY(-1px);
 }
 .btn-outline {
-  background: transparent !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: #c4c4d4 !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  color: #334155 !important;
   font-family: "DM Sans", sans-serif;
   font-weight: 500;
   border-radius: 10px;
@@ -270,8 +270,8 @@ const features = [
 }
 .btn-outline:hover {
   border-color: rgba(99, 102, 241, 0.5) !important;
-  color: #e8e9f0 !important;
-  background: transparent !important;
+  color: #4338ca !important;
+  background: rgba(99, 102, 241, 0.06) !important;
 }
 .btn-lg {
   font-size: 1rem !important;
@@ -312,7 +312,7 @@ const features = [
   gap: 8px;
   background: rgba(99, 102, 241, 0.12) !important;
   border: 1px solid rgba(99, 102, 241, 0.25) !important;
-  color: #a5b4fc !important;
+  color: #4f46e5 !important;
   font-size: 0.78rem;
   font-weight: 500;
   padding: 5px 12px;
@@ -345,7 +345,7 @@ const features = [
   font-size: clamp(2.2rem, 4vw, 3.4rem);
   line-height: 1.1;
   letter-spacing: -0.03em;
-  color: #f0f0f5;
+  color: #0f172a;
   margin: 0 0 20px;
   animation: fadeUp 0.6s ease 0.1s both;
 }
@@ -384,7 +384,7 @@ const features = [
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 2px solid #08090c;
+  border: 2px solid #f8fafc;
   background: linear-gradient(
     135deg,
     hsl(calc(var(--i) * 60), 60%, 55%),
@@ -408,14 +408,14 @@ const features = [
 
 /* ── Card overrides ── */
 .feature-card {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
   border-radius: 20px !important;
   padding: 28px !important;
   backdrop-filter: blur(20px);
   box-shadow:
-    0 32px 64px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    0 32px 64px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 .card-header {
   flex-direction: row !important;
@@ -464,8 +464,8 @@ const features = [
   align-items: flex-start;
   gap: 14px;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(248, 250, 252, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 12px;
   animation: fadeUp 0.5s ease both;
   transition:
@@ -484,14 +484,14 @@ const features = [
 .feature-text {
   font-size: 0.875rem;
   line-height: 1.55;
-  color: #9ca3af;
+  color: #475569;
 }
 
 .card-stats {
   display: flex;
   align-items: center;
   padding: 16px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
 }
 .stat {
   flex: 1;
@@ -503,7 +503,7 @@ const features = [
 .stat-value {
   font-family: "Instrument Serif", serif;
   font-size: 1.8rem;
-  color: #f0f0f5;
+  color: #0f172a;
   line-height: 1;
 }
 .stat-label {
@@ -518,7 +518,7 @@ const features = [
 .stat-divider {
   width: 1px !important;
   height: 36px !important;
-  background-color: rgba(255, 255, 255, 0.07) !important;
+  background-color: rgba(15, 23, 42, 0.08) !important;
   flex-shrink: 0;
   align-self: center;
 }
@@ -526,15 +526,15 @@ const features = [
 /* ── Floating pills ── */
 .float-pill {
   position: absolute;
-  background: rgba(18, 20, 28, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 14px;
   padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 10px;
   backdrop-filter: blur(16px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
   font-size: 0.8rem;
   white-space: nowrap;
 }
@@ -562,7 +562,7 @@ const features = [
   width: 80px !important;
   height: 4px !important;
   border-radius: 2px !important;
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(15, 23, 42, 0.08) !important;
 }
 .pill-bar :deep([role="progressbar"] > div),
 .pill-bar :deep(.bg-primary) {
@@ -582,7 +582,7 @@ const features = [
 .pill-value {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #f0f0f5;
+  color: #0f172a;
 }
 
 /* ── Animations ── */

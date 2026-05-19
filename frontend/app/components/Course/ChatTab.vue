@@ -40,7 +40,7 @@ async function sendQuestion() {
       v-if="messages.length === 0"
       class="glass-card rounded-xl p-8 text-center text-sm text-muted-foreground"
     >
-      <MessageSquareIcon class="w-8 h-8 mx-auto mb-3 text-indigo-400" />
+      <MessageSquareIcon class="w-8 h-8 mx-auto mb-3 text-indigo-600" />
       <p>Боловсруулсан тэмдэглэл дээр тулгуурлан асуулт асууна.</p>
     </div>
 
@@ -56,19 +56,19 @@ async function sendQuestion() {
           :class="
             message.role === 'user'
               ? 'gradient-indigo text-white'
-              : 'glass-card text-foreground border border-white/10'
+              : 'glass-card text-foreground border border-slate-200'
           "
         >
           <div class="flex items-start gap-2">
             <UserIcon v-if="message.role === 'user'" class="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <BotIcon v-else class="w-4 h-4 mt-0.5 text-indigo-400 flex-shrink-0" />
+            <BotIcon v-else class="w-4 h-4 mt-0.5 text-indigo-600 flex-shrink-0" />
             <p class="whitespace-pre-wrap">{{ message.text }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
+    <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
 
     <form class="glass-card rounded-xl p-3 flex items-end gap-3" @submit.prevent="sendQuestion">
       <Textarea

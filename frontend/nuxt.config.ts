@@ -77,9 +77,6 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: "Smart Note",
-      htmlAttrs: {
-        class: 'dark',
-      },
       titleTemplate: "%s",
       meta: [
         { charset: "utf-8" },

@@ -39,15 +39,15 @@ const isCompleted = computed(() => props.course.status === "completed")
             class="px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
             :class="
               isCompleted
-                ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                ? 'bg-teal-500/10 text-teal-700 border border-teal-500/20'
+                : 'bg-indigo-500/10 text-indigo-700 border border-indigo-500/20'
             "
           >
             {{ isCompleted ? "Дууссан" : "Үргэлжилж байгаа" }}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <button class="p-1 rounded-md hover:bg-white/10 transition">
+              <button class="p-1 rounded-md hover:bg-slate-100 transition">
                 <EllipsisVerticalIcon class="w-5 h-5" />
               </button>
             </DropdownMenuTrigger>
@@ -59,7 +59,7 @@ const isCompleted = computed(() => props.course.status === "completed")
 
               <DropdownMenuItem
                 @click="emit('delete', course)"
-                class="text-red-400 focus:text-red-400"
+                class="text-red-600 focus:text-red-600"
               >
                 Устгах
               </DropdownMenuItem>
@@ -74,7 +74,7 @@ const isCompleted = computed(() => props.course.status === "completed")
           <span>Явц</span>
           <span>{{ course.progress || 0 }}%</span>
         </div>
-        <Progress :value="course.progress || 0" class="h-1.5 bg-white/5" />
+        <Progress :value="course.progress || 0" class="h-1.5 bg-slate-100" />
       </div>
 
       <!-- Footer -->

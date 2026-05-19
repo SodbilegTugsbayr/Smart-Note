@@ -136,8 +136,8 @@ async function submit() {
 <style scoped>
 .login-root {
   min-height: 100vh;
-  background: #08090c;
-  color: #e8e9f0;
+  background: #f8fafc;
+  color: #0f172a;
   font-family: "DM Sans", sans-serif;
   position: relative;
   overflow: hidden;
@@ -156,14 +156,14 @@ async function submit() {
 .bg-orb-1 {
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
   top: -150px;
   right: -100px;
 }
 .bg-orb-2 {
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.12) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.1) 0%, transparent 70%);
   bottom: -100px;
   left: -80px;
 }
@@ -171,8 +171,8 @@ async function submit() {
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
   background-size: 48px 48px;
   z-index: 0;
   pointer-events: none;
@@ -195,7 +195,7 @@ async function submit() {
   font-family: "Instrument Serif", serif;
   font-size: 1.3rem;
   letter-spacing: -0.02em;
-  color: #f0f0f5;
+  color: #0f172a;
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -212,13 +212,13 @@ async function submit() {
 
 .login-card {
   width: 100%;
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
   border-radius: 20px !important;
   backdrop-filter: blur(20px);
   box-shadow:
-    0 32px 64px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+    0 32px 64px rgba(15, 23, 42, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
 }
 
 .card-header {
@@ -229,19 +229,19 @@ async function submit() {
   font-family: "Instrument Serif", serif !important;
   font-size: 1.9rem !important;
   letter-spacing: -0.03em !important;
-  color: #f0f0f5 !important;
+  color: #0f172a !important;
   font-weight: 400 !important;
 }
 .card-subtitle {
   font-size: 0.875rem !important;
-  color: #4b5563 !important;
+  color: #64748b !important;
   line-height: 1.5 !important;
 }
 
 .alert-error {
   background: rgba(239, 68, 68, 0.08) !important;
   border: 1px solid rgba(239, 68, 68, 0.25) !important;
-  color: #fca5a5 !important;
+  color: #b91c1c !important;
   font-size: 0.85rem !important;
   border-radius: 10px !important;
   margin-bottom: 20px;
@@ -262,20 +262,20 @@ async function submit() {
 .field-label {
   font-size: 0.82rem !important;
   font-weight: 500 !important;
-  color: #9ca3af !important;
+  color: #475569 !important;
   letter-spacing: 0.01em !important;
 }
 .field-hint {
   font-size: 0.78rem;
-  color: #4b5563;
+  color: #64748b;
   margin: 0;
 }
 
 .field-input {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
   border-radius: 10px !important;
-  color: #f0f0f5 !important;
+  color: #0f172a !important;
   font-family: "DM Sans", sans-serif !important;
   font-size: 0.925rem !important;
   transition:
@@ -284,11 +284,11 @@ async function submit() {
     box-shadow 0.2s !important;
 }
 .field-input::placeholder {
-  color: #374151 !important;
+  color: #94a3b8 !important;
 }
 .field-input:focus-visible {
   border-color: rgba(99, 102, 241, 0.6) !important;
-  background: rgba(99, 102, 241, 0.05) !important;
+  background: #ffffff !important;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
   outline: none !important;
 }
@@ -361,7 +361,7 @@ async function submit() {
 }
 .card-footer p {
   font-size: 0.85rem;
-  color: #4b5563;
+  color: #64748b;
   text-align: center;
 }
 .footer-link {

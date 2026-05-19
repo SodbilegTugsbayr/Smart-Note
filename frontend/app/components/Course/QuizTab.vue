@@ -100,7 +100,7 @@ function resetQuiz() {
           <TrophyIcon class="w-10 h-10 text-white" />
         </div>
         <h3 class="font-heading text-2xl text-foreground mb-2">Баяр хүргэе! 🎉</h3>
-        <p class="text-teal-400 text-lg font-medium">
+        <p class="text-teal-700 text-lg font-medium">
           {{ score }}/{{ flashQA.length }} ({{ pct }}%)
         </p>
         <p class="text-muted-foreground text-sm mt-2">Та энэ хичээлийг амжилттай дууслаа!</p>
@@ -109,7 +109,7 @@ function resetQuiz() {
         <div
           class="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mx-auto mb-4"
         >
-          <span class="text-3xl font-heading text-indigo-400">{{ pct }}%</span>
+          <span class="text-3xl font-heading text-indigo-600">{{ pct }}%</span>
         </div>
         <h3 class="font-heading text-2xl text-foreground mb-2">Тестийн үр дүн</h3>
         <p class="text-muted-foreground text-sm">
@@ -125,7 +125,7 @@ function resetQuiz() {
         <span class="text-xs text-muted-foreground whitespace-nowrap"
           >Асуулт {{ currentQ + 1 }}/{{ flashQA.length }}</span
         >
-        <div class="h-1.5 flex-1 bg-white/5 rounded-full overflow-hidden">
+        <div class="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
           <div
             class="h-full gradient-indigo rounded-full transition-all"
             :style="{ width: `${((currentQ + 1) / flashQA.length) * 100}%` }"
@@ -152,12 +152,12 @@ function resetQuiz() {
       </div>
 
       <div v-else class="space-y-3">
-        <div class="bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-          <p class="text-xs text-indigo-400 mb-1 uppercase tracking-wider">Хариулт</p>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+          <p class="text-xs text-indigo-600 mb-1 uppercase tracking-wider">Хариулт</p>
           <p class="text-sm text-foreground">{{ currentCard.answer }}</p>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-sm font-medium" :class="selected ? 'text-teal-400' : 'text-red-400'">
+          <span class="text-sm font-medium" :class="selected ? 'text-teal-700' : 'text-red-600'">
             {{ selected ? "✓ Зөв гэж тэмдэглэлээ" : "✗ Буруу гэж тэмдэглэлээ" }}
           </span>
         </div>

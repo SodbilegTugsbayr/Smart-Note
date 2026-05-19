@@ -97,9 +97,9 @@ function handleFileAttach() {
     <div v-if="processing" class="glass-card rounded-xl p-4 space-y-3">
       <div class="flex items-center justify-between">
         <span class="text-sm text-muted-foreground">AI боловсруулж байна...</span>
-        <span class="text-sm font-medium text-indigo-400">{{ Math.round(progress) }}%</span>
+        <span class="text-sm font-medium text-indigo-600">{{ Math.round(progress) }}%</span>
       </div>
-      <div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+      <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
         <div
           class="h-full gradient-indigo rounded-full transition-all duration-500"
           :style="{ width: `${progress}%` }"
@@ -116,8 +116,8 @@ function handleFileAttach() {
             class="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
             :class="
               note.process_status === 'completed'
-                ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20'
-                : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                ? 'bg-teal-500/10 text-teal-700 border border-teal-500/20'
+                : 'bg-indigo-500/10 text-indigo-700 border border-indigo-500/20'
             "
           >
             {{ note.process_status === "completed" ? "Дууссан" : "Боловсруулж байна" }}
@@ -135,9 +135,9 @@ function handleFileAttach() {
             <div
               v-for="kc in note.key_concepts"
               :key="kc.concept"
-              class="bg-white/3 border border-white/5 rounded-lg px-3 py-2"
+              class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
             >
-              <p class="text-xs font-medium text-indigo-400 mb-0.5">{{ kc.concept }}</p>
+              <p class="text-xs font-medium text-indigo-600 mb-0.5">{{ kc.concept }}</p>
               <p class="text-xs text-muted-foreground">{{ kc.definition }}</p>
             </div>
           </div>

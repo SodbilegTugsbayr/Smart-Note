@@ -44,9 +44,9 @@ const openEditDialog = () => {}
     <!-- Loading skeleton -->
     <div v-if="status === 'pending'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       <div v-for="i in 3" :key="i" class="glass-card rounded-xl p-5 h-48 animate-pulse">
-        <div class="h-4 bg-white/5 rounded w-2/3 mb-4" />
-        <div class="h-2 bg-white/5 rounded w-full mb-6" />
-        <div class="h-3 bg-white/5 rounded w-1/3" />
+        <div class="h-4 bg-slate-200 rounded w-2/3 mb-4" />
+        <div class="h-2 bg-slate-200 rounded w-full mb-6" />
+        <div class="h-3 bg-slate-200 rounded w-1/3" />
       </div>
     </div>
 

@@ -22,7 +22,7 @@ async function logout() {
 </script>
 
 <template>
-  <nav class="sticky top-0 z-50 glass-card border-b border-white/5">
+  <nav class="sticky top-0 z-50 glass-card border-b border-slate-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
         <!-- Logo -->
@@ -39,7 +39,7 @@ async function logout() {
           <NuxtLink
             v-if="user?.role === 'admin'"
             to="/admin"
-            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-slate-100 transition-colors"
           >
             <ShieldIcon class="w-4 h-4" />
             <span class="hidden sm:inline">Админ</span>
@@ -49,7 +49,7 @@ async function logout() {
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
               <button
-                class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <Avatar class="w-8 h-8">
                   <AvatarFallback class="gradient-indigo text-white text-xs font-medium">
@@ -60,7 +60,7 @@ async function logout() {
               </button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" class="w-48 glass-card border-white/10">
+            <DropdownMenuContent align="end" class="w-48 glass-card border-slate-200">
               <template v-if="user">
                 <div class="px-3 py-2">
                   <p class="text-sm font-medium text-foreground">
@@ -68,7 +68,7 @@ async function logout() {
                   </p>
                   <p class="text-xs text-muted-foreground">{{ user.email }}</p>
                 </div>
-                <DropdownMenuSeparator class="bg-white/5" />
+                <DropdownMenuSeparator class="bg-slate-200" />
               </template>
 
               <DropdownMenuItem class="text-muted-foreground hover:text-foreground cursor-pointer">
@@ -78,10 +78,10 @@ async function logout() {
                 <SettingsIcon class="w-4 h-4 mr-2" /> Тохиргоо
               </DropdownMenuItem>
 
-              <DropdownMenuSeparator class="bg-white/5" />
+              <DropdownMenuSeparator class="bg-slate-200" />
 
               <DropdownMenuItem
-                class="text-red-400 hover:text-red-300 cursor-pointer"
+                class="text-red-600 hover:text-red-700 cursor-pointer"
                 @click="logout"
               >
                 <LogOutIcon class="w-4 h-4 mr-2" /> Гарах

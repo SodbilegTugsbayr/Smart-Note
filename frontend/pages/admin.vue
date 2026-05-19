@@ -30,11 +30,11 @@ async function removeUser(user) {
 
     <div class="glass-card rounded-xl overflow-hidden">
       <div v-if="pending" class="p-8 flex items-center justify-center">
-        <Loader2Icon class="w-6 h-6 text-indigo-400 animate-spin" />
+        <Loader2Icon class="w-6 h-6 text-indigo-600 animate-spin" />
       </div>
 
       <table v-else class="w-full text-sm">
-        <thead class="bg-white/5 text-muted-foreground">
+        <thead class="bg-slate-100 text-muted-foreground">
           <tr>
             <th class="text-left font-medium px-4 py-3">ID</th>
             <th class="text-left font-medium px-4 py-3">Нэр</th>
@@ -44,20 +44,20 @@ async function removeUser(user) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in users" :key="user.id" class="border-t border-white/5">
+          <tr v-for="user in users" :key="user.id" class="border-t border-slate-200">
             <td class="px-4 py-3 text-muted-foreground">{{ user.id }}</td>
             <td class="px-4 py-3 text-foreground">
               {{ [user.first_name, user.last_name].filter(Boolean).join(" ") || "-" }}
             </td>
             <td class="px-4 py-3 text-muted-foreground">{{ user.email }}</td>
             <td class="px-4 py-3">
-              <span class="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-300 text-xs">
+              <span class="px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-700 text-xs">
                 {{ user.role }}
               </span>
             </td>
             <td class="px-4 py-3 text-right">
               <button
-                class="text-red-400 hover:text-red-300 disabled:opacity-40"
+                class="text-red-600 hover:text-red-700 disabled:opacity-40"
                 :disabled="user.role === 'admin'"
                 @click="removeUser(user)"
               >

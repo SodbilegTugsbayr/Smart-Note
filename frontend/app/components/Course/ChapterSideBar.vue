@@ -31,13 +31,13 @@ function toggleSection(id) {
       <div v-for="note in notes" :key="note.id">
         <button
           @click="toggleSection(note.id)"
-          class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-foreground/80 hover:bg-white/5 transition-colors"
+          class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-foreground/80 hover:bg-slate-100 transition-colors"
         >
           <ChevronRightIcon
             class="w-3.5 h-3.5 text-muted-foreground transition-transform flex-shrink-0"
             :class="expandedSections.includes(note.id) ? 'rotate-90' : ''"
           />
-          <BookOpenIcon class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+          <BookOpenIcon class="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
           <span class="truncate text-left flex-1 text-xs">{{ note.title }}</span>
         </button>
 
@@ -49,8 +49,8 @@ function toggleSection(id) {
             class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left"
             :class="
               activeTopicId === note.id
-                ? 'bg-indigo-500/10 text-indigo-400'
-                : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
+                ? 'bg-indigo-500/10 text-indigo-700'
+                : 'text-muted-foreground hover:text-foreground hover:bg-slate-100'
             "
           >
             <FileTextIcon class="w-3 h-3 flex-shrink-0" />

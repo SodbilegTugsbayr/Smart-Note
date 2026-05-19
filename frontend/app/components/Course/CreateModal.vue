@@ -256,7 +256,7 @@ const isSubmitDisabled = computed(
 
 <template>
   <Dialog :open="open" @update:open="handleOpenChange">
-    <DialogContent class="glass-card border-white/10 sm:max-w-lg max-h-[85vh] overflow-y-auto">
+    <DialogContent class="glass-card border-slate-200 sm:max-w-lg max-h-[85vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle class="font-heading text-xl text-foreground">
           <span v-if="step === 'choose'">Шинэ хичээл үүсгэх</span>
@@ -266,7 +266,7 @@ const isSubmitDisabled = computed(
       </DialogHeader>
       <DialogDescription></DialogDescription>
 
-      <p v-if="errorMessage" class="text-sm text-red-400 mt-1">{{ errorMessage }}</p>
+      <p v-if="errorMessage" class="text-sm text-red-600 mt-1">{{ errorMessage }}</p>
 
       <!-- Step: choose -->
       <div v-if="step === 'choose'" class="grid grid-cols-2 gap-3 mt-4">
@@ -296,7 +296,7 @@ const isSubmitDisabled = computed(
         <div class="flex items-center gap-2">
           <Popover v-model:open="isIconOpen">
             <PopoverTrigger as-child>
-              <Button variant="outline" size="icon" class="bg-white/5 border-white/10">
+              <Button variant="outline" size="icon" class="bg-white border-slate-200">
                 <component :is="`${form.icon}Icon`" class="w-5 h-5" />
               </Button>
             </PopoverTrigger>
@@ -317,14 +317,14 @@ const isSubmitDisabled = computed(
           <Input
             v-model="form.title"
             placeholder="Хичээлийн нэр..."
-            class="bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground"
+            class="bg-white border-slate-200 text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         <Input
           v-model="form.description"
           placeholder="Хичээлийн тайлбар..."
-          class="bg-white/5 border-white/10 text-foreground placeholder:text-muted-foreground"
+          class="bg-white border-slate-200 text-foreground placeholder:text-muted-foreground"
         />
 
         <!-- Dropzone (upload step only) -->
@@ -340,7 +340,7 @@ const isSubmitDisabled = computed(
             :class="
               isDragging
                 ? 'border-indigo-500/50 bg-indigo-500/5'
-                : 'border-white/10 hover:border-white/20'
+                : 'border-slate-200 hover:border-slate-300'
             "
           >
             <UploadIcon class="w-8 h-8 text-muted-foreground" />
@@ -350,14 +350,14 @@ const isSubmitDisabled = computed(
 
           <!-- Parsing -->
           <div v-else-if="extracting" class="flex flex-col items-center gap-3 py-8">
-            <Loader2Icon class="w-8 h-8 text-indigo-400 animate-spin" />
+            <Loader2Icon class="w-8 h-8 text-indigo-600 animate-spin" />
             <p class="text-sm text-muted-foreground">PDF задалж байна...</p>
           </div>
 
           <!-- File preview + chapter tree -->
           <div v-else class="space-y-3">
             <div class="flex items-center gap-2 glass-card rounded-lg px-3 py-2">
-              <FileTextIcon class="w-4 h-4 text-indigo-400" />
+              <FileTextIcon class="w-4 h-4 text-indigo-600" />
               <span class="text-sm text-foreground flex-1 truncate">{{ form.fileName }}</span>
               <button @click="clearFile">
                 <XIcon class="w-4 h-4 text-muted-foreground hover:text-foreground" />
@@ -381,9 +381,9 @@ const isSubmitDisabled = computed(
                     type="checkbox"
                     :checked="ch.selected"
                     @change="toggleChapter(chIdx)"
-                    class="rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-indigo-500/30"
+                    class="rounded border-slate-300 bg-white text-indigo-500 focus:ring-indigo-500/30"
                   />
-                  <BookOpenIcon class="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <BookOpenIcon class="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                   <span class="text-sm text-foreground flex-1">{{ ch.title }}</span>
                   <span class="text-xs text-muted-foreground/40 shrink-0 tabular-nums">
                     {{ ch.startPage }}–{{ ch.endPage }}p
@@ -399,7 +399,7 @@ const isSubmitDisabled = computed(
                       type="checkbox"
                       :checked="t.selected"
                       @change="toggleTopic(chIdx, tIdx)"
-                      class="rounded border-white/20 bg-white/5 text-indigo-500 focus:ring-indigo-500/30"
+                      class="rounded border-slate-300 bg-white text-indigo-500 focus:ring-indigo-500/30"
                     />
                     <span class="text-xs text-foreground flex-1">{{ t.title }}</span>
                     <span class="text-xs text-muted-foreground/40 shrink-0 tabular-nums">

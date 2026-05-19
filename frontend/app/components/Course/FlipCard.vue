@@ -33,7 +33,7 @@ const flipped = ref(false)
           background: rgba(99, 102, 241, 0.05);
         "
       >
-        <p class="text-xs text-indigo-400 mb-2 uppercase tracking-wider">Хариулт</p>
+        <p class="text-xs text-indigo-600 mb-2 uppercase tracking-wider">Хариулт</p>
         <p class="text-sm text-foreground/80 text-center">{{ definition }}</p>
       </div>
     </div>

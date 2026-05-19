@@ -28,7 +28,7 @@ function handleUpdate(updated) {
 <template>
   <NavTopBar/>
   <div v-if="!course" class="flex items-center justify-center h-[60vh]">
-    <Loader2Icon class="w-8 h-8 text-indigo-400 animate-spin" />
+    <Loader2Icon class="w-8 h-8 text-indigo-600 animate-spin" />
   </div>
 
   <div v-else class="flex h-[calc(100vh-64px)]">
@@ -42,7 +42,7 @@ function handleUpdate(updated) {
 
     <!-- Sidebar -->
     <aside
-      class="fixed lg:static inset-y-0 left-0 top-16 z-40 w-64 glass-card border-r border-white/5 overflow-y-auto transition-transform duration-300"
+      class="fixed lg:static inset-y-0 left-0 top-16 z-40 w-64 glass-card border-r border-slate-200 overflow-y-auto transition-transform duration-300"
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
       <CourseChapterSideBar
@@ -92,28 +92,28 @@ function handleUpdate(updated) {
 
         <!-- Tabs -->
         <Tabs default-value="notes" class="space-y-4">
-          <TabsList class="bg-white/5 border border-white/5 p-1 rounded-xl">
+          <TabsList class="bg-slate-100 border border-slate-200 p-1 rounded-xl">
             <TabsTrigger
               value="notes"
-              class="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-300 rounded-lg text-sm"
+              class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
             >
               Тэмдэглэл
             </TabsTrigger>
             <TabsTrigger
               value="flashcards"
-              class="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-300 rounded-lg text-sm"
+              class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
             >
               Флаш карт
             </TabsTrigger>
             <TabsTrigger
               value="quiz"
-              class="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-300 rounded-lg text-sm"
+              class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
             >
               Тест
             </TabsTrigger>
             <TabsTrigger
               value="chat"
-              class="data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-300 rounded-lg text-sm"
+              class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
             >
               Chatbot
             </TabsTrigger>
