@@ -2,6 +2,7 @@
 const props = defineProps({
   course: { type: Object, required: true },
 })
+const emit = defineEmits(["update"])
 
 const showAdd = ref(false)
 const newTerm = ref("")
@@ -21,10 +22,11 @@ const cards = computed(() => {
 async function handleAIGenerate() {
   generating.value = true
   try {
-    await $fetch("/api/ai/generate-flashcards", {
+    const updatedCourse = await $fetch("/api/ai/generate-flashcards", {
       method: "POST",
       body: { course_id: props.course.id },
     })
+    emit("update", updatedCourse)
   } finally {
     generating.value = false
   }
@@ -32,9 +34,13 @@ async function handleAIGenerate() {
 
 async function handleAdd() {
   if (!newTerm.value.trim() || !newDef.value.trim()) return
-  await $fetch("/api/flashcards", {
+  const savedNote = await $fetch("/api/flashcards", {
     method: "POST",
     body: { course_id: props.course.id, term: newTerm.value, definition: newDef.value },
+  })
+  emit("update", {
+    ...props.course,
+    notes: (props.course.notes || []).map((note) => (note.id === savedNote.id ? savedNote : note)),
   })
   newTerm.value = ""
   newDef.value = ""

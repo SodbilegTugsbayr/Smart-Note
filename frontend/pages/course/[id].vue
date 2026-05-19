@@ -123,7 +123,7 @@ function handleUpdate(updated) {
             <CourseNotesTab :course="course" @update="handleUpdate" />
           </TabsContent>
           <TabsContent value="flashcards">
-            <CourseFlashCardsTab :course="course" />
+            <CourseFlashCardsTab :course="course" @update="handleUpdate" />
           </TabsContent>
           <TabsContent value="quiz">
             <CourseQuizTab :course="course" @update="handleUpdate" />

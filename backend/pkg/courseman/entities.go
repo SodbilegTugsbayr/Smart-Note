@@ -17,6 +17,7 @@ type Course struct {
 	Description   string          `json:"description"`
 	Status        string          `json:"status"`
 	Progress      int             `json:"progress"`
+	IsPublic      bool            `json:"is_public"`
 	HasBook       bool            `json:"has_book"`
 	ContainerPath string          `json:"-"`
 	FilePath      string          `json:"-"`

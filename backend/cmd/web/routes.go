@@ -42,12 +42,36 @@ func routes() http.Handler {
 		r.Post("/me", updateUserInfo)
 		r.HandleFunc("/ws", app.CustomerWSConnections.Handler)
 		r.Post("/logout", logout)
+		r.Post("/upload", uploadFile)
+
+		r.Route("/ai", func(r chi.Router) {
+			r.Post("/process-notes", processCourseNotes)
+			r.Post("/generate-flashcards", generateCourseFlashcards)
+			r.Post("/chat", askCourseChat)
+		})
+		r.Post("/flashcards", addFlashcard)
 
 		r.Route("/course", func(r chi.Router) {
 			r.Get("/", getUserCourses)
 			r.Post("/", saveCourse)
 			r.With(setChosenCourse).Route("/{CourseID}", func(r chi.Router) {
 				r.Get("/", getCourse)
+				r.Patch("/", updateCourse)
+				r.Delete("/", deleteCourse)
+			})
+		})
+
+		r.Route("/courses", func(r chi.Router) {
+			r.With(setChosenCourse).Route("/{CourseID}", func(r chi.Router) {
+				r.Get("/", getCourse)
+				r.Patch("/", updateCourse)
+				r.Delete("/", deleteCourse)
+			})
+		})
+
+		r.Route("/notes", func(r chi.Router) {
+			r.With(setChosenNote).Route("/{NoteID}", func(r chi.Router) {
+				r.Patch("/", updateNote)
 			})
 		})
 

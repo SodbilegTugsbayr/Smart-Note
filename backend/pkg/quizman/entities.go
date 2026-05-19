@@ -11,7 +11,7 @@ const (
 
 type Quiz struct {
 	entities.Model
-	NoteID        int      `json:"course_id"`
+	NoteID        int      `json:"note_id"`
 	Question      string   `json:"question"`
 	Options       []string `json:"options" gorm:"serializer:json"`
 	CorrectAnswer string   `json:"-"`

@@ -159,14 +159,116 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 
 func getCourse(w http.ResponseWriter, r *http.Request) {
 	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
+	if !canAccessCourse(loggedUser, chosenCourse) {
+		oapi.Forbidden(w)
+		return
+	}
+
 	oapi.SendResp(w, chosenCourse)
+}
+
+type updateCoursePayload struct {
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Status      *string `json:"status"`
+	Progress    *int    `json:"progress"`
+	IsPublic    *bool   `json:"is_public"`
+	Icon        *string `json:"icon"`
+}
+
+func updateCourse(w http.ResponseWriter, r *http.Request) {
+	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
+	if !canAccessCourse(loggedUser, chosenCourse) {
+		oapi.Forbidden(w)
+		return
+	}
+
+	var data updateCoursePayload
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		oapi.CustomError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if data.Title != nil {
+		title := strings.TrimSpace(*data.Title)
+		if title == "" {
+			oapi.CustomError(w, http.StatusBadRequest, "Title is required")
+			return
+		}
+		chosenCourse.Title = title
+	}
+	if data.Description != nil {
+		chosenCourse.Description = strings.TrimSpace(*data.Description)
+	}
+	if data.Status != nil {
+		status := strings.TrimSpace(*data.Status)
+		if status != courseman.STATUS_IN_PROGRESS && status != courseman.STATUS_COMPLETED {
+			oapi.CustomError(w, http.StatusBadRequest, "Invalid status")
+			return
+		}
+		chosenCourse.Status = status
+	}
+	if data.Progress != nil {
+		progress := *data.Progress
+		if progress < 0 {
+			progress = 0
+		}
+		if progress > 100 {
+			progress = 100
+		}
+		chosenCourse.Progress = progress
+	}
+	if data.IsPublic != nil {
+		chosenCourse.IsPublic = *data.IsPublic
+	}
+	if data.Icon != nil {
+		icon := strings.TrimSpace(*data.Icon)
+		if icon != "" {
+			chosenCourse.Icon = icon
+		}
+	}
+
+	savedCourse, err := app.Courses.Save(chosenCourse)
+	if err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+
+	oapi.SendResp(w, savedCourse)
+}
+
+func deleteCourse(w http.ResponseWriter, r *http.Request) {
+	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
+	if !canAccessCourse(loggedUser, chosenCourse) {
+		oapi.Forbidden(w)
+		return
+	}
+
+	if err := app.Courses.Delete(chosenCourse.ID); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+	if chosenCourse.ContainerPath != "" {
+		if err := os.RemoveAll(chosenCourse.ContainerPath); err != nil {
+			app.ErrorLog.Println("failed to remove course files: ", err)
+		}
+	}
+
+	oapi.SendResp(w, chosenCourse)
+}
+
+func canAccessCourse(user *userman.User, course *courseman.Course) bool {
+	return user.Role == userman.ROLE_ADMIN || course.UserID == user.ID
 }
 
 func validateAndSaveFileToDisk(fh *multipart.FileHeader, dir string) (string, error) {
 	const maxFileSize = 50 << 20
 
 	if fh.Size > maxFileSize {
-		return "", fmt.Errorf("file too large: max 10MB allowed")
+		return "", fmt.Errorf("file too large: max 50MB allowed")
 	}
 
 	file, err := fh.Open()

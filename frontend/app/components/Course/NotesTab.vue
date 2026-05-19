@@ -40,7 +40,7 @@ async function handleAIProcess() {
     clearInterval(interval)
     progress.value = 100
     if (result?.summary) content.value = result.summary
-    emit("update", { ...props.course })
+    emit("update", result?.course || { ...props.course })
   } catch {
     clearInterval(interval)
   } finally {

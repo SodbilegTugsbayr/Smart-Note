@@ -156,6 +156,18 @@ func preparePrompt(rawContent string) string {
 - Зөвхөн JSON хариу өгнө үү — нэмэлт текст, тайлбар оруулахгүй`, rawContent)
 }
 
+func prepareQuestionPrompt(courseContext, question string) string {
+	return fmt.Sprintf(`Та Smart Note системийн сургалтын туслах чатбот байна.
+Доорх хичээлийн тэмдэглэл дээр тулгуурлан хэрэглэгчийн асуултад Монгол хэлээр, товч бөгөөд ойлгомжтой хариулна уу.
+Хариулт зөвхөн өгөгдсөн тэмдэглэлд тулгуурлах ёстой. Хэрэв тэмдэглэлд хангалттай мэдээлэл байхгүй бол түүнийгээ шууд хэлнэ үү.
+
+--- ХИЧЭЭЛИЙН ТЭМДЭГЛЭЛ ---
+%s
+--- ТЭМДЭГЛЭЛ ТӨГСӨВ ---
+
+Асуулт: %s`, courseContext, question)
+}
+
 // rawQuiz is used only for unmarshaling the LLM response (includes correct_answer)
 type rawQuiz struct {
 	Question      string   `json:"question"`
@@ -195,6 +207,9 @@ func GenerateNote(rawContent string) (*GeneratedOutput, error) {
 	if err := json.Unmarshal([]byte(content), &raw); err != nil {
 		return nil, fmt.Errorf("error unmarshaling content: %w", err)
 	}
+	if raw.Note == nil {
+		return nil, fmt.Errorf("note is missing from generated output")
+	}
 
 	raw.Note.RawContent = rawContent
 
@@ -212,4 +227,27 @@ func GenerateNote(rawContent string) (*GeneratedOutput, error) {
 		Note:    *raw.Note,
 		Quizzes: quizzes,
 	}, nil
+}
+
+func AnswerQuestion(courseContext, question string) (string, error) {
+	client := openai.NewClient(
+		option.WithBaseURL(baseURL),
+		option.WithAPIKey(apiKey),
+	)
+
+	chatCompletion, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Model: model,
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(prepareQuestionPrompt(courseContext, question)),
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("chat completion error: %w", err)
+	}
+
+	if len(chatCompletion.Choices) == 0 {
+		return "", fmt.Errorf("no choices returned from chat completion")
+	}
+
+	return chatCompletion.Choices[0].Message.Content, nil
 }

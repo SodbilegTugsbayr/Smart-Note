@@ -9,6 +9,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/go-chi/chi"
 )
@@ -115,6 +116,25 @@ func setChosenCourse(next http.Handler) http.Handler {
 		}
 
 		ctx := context.WithValue(r.Context(), app.ContextKeyChosenCourse, note)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func setChosenNote(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := strconv.Atoi(chi.URLParam(r, "NoteID"))
+
+		note, err := app.Notes.GetByID(id)
+		if err != nil {
+			if errors.Is(err, noteman.ErrNotFound) {
+				oapi.NotFound(w)
+			} else {
+				oapi.ServerError(w, err)
+			}
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), app.ContextKeyChosenNote, note)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

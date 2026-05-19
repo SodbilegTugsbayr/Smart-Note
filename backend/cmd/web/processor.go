@@ -14,11 +14,17 @@ import (
 func processNote(note *noteman.Note) {
 	var filePath string
 
+	note.ProcessStatus = noteman.PROCESS_STATUS_PROCESSING
+	if _, err := app.Notes.Save(note); err != nil {
+		app.ErrorLog.Println("failed to update processing status: ", err)
+	}
+
 	if note.IsFromBook {
-		// Assuming you want to create a temporary PDF with only the pages from StartPage to EndPage
 		tempFile, err := extractPages(note.FilePath, note.StartPage, note.EndPage)
 		if err != nil {
 			app.ErrorLog.Println("failed to extract pages: ", err)
+			markNoteProcessingFailed(note)
+			return
 		}
 		defer os.Remove(tempFile)
 		filePath = tempFile
@@ -29,29 +35,45 @@ func processNote(note *noteman.Note) {
 	rawText, err := ocrapi.GetTextFromFile(filePath)
 	if err != nil {
 		app.ErrorLog.Println("OCR failed: ", err)
+		markNoteProcessingFailed(note)
+		return
 	}
 
 	note.RawContent = rawText
-	app.InfoLog.Println("Raw content: ", rawText)
 	if _, err := app.Notes.Save(note); err != nil {
 		app.ErrorLog.Println("failed to save note: ", err)
 	}
 
 	output, err := eguneapi.GenerateNote(rawText)
-	if _, err := app.Notes.Save(note); err != nil {
-		app.ErrorLog.Println("failed to generate note contetn: ", err)
+	if err != nil {
+		app.ErrorLog.Println("failed to generate note content: ", err)
+		markNoteProcessingFailed(note)
+		return
 	}
 
 	for _, quiz := range output.Quizzes {
-		app.InfoLog.Println("Question: ", quiz.Question)
+		quiz.NoteID = note.ID
+		if _, err := app.Quizzes.Save(&quiz); err != nil {
+			app.ErrorLog.Println("failed to save quiz: ", err)
+		}
 	}
 
+	note.Title = output.Note.Title
 	note.Summary = output.Note.Summary
 	note.KeyConcepts = output.Note.KeyConcepts
 	note.FlashCards = output.Note.FlashCards
+	note.ProcessStatus = noteman.PROCESS_STATUS_COMPLETED
+	note.Status = noteman.STATUS_COMPLETED
 
 	if _, err := app.Notes.Save(note); err != nil {
 		app.ErrorLog.Println("failed to save note: ", err)
+	}
+}
+
+func markNoteProcessingFailed(note *noteman.Note) {
+	note.ProcessStatus = noteman.PROCESS_STATUS_FAILED
+	if _, err := app.Notes.Save(note); err != nil {
+		app.ErrorLog.Println("failed to mark note processing failed: ", err)
 	}
 }
 
