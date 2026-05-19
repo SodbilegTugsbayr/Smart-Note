@@ -5,9 +5,7 @@ import (
 	"os"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
-	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/eguneapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
-	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/ocrapi"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
@@ -32,7 +30,7 @@ func processNote(note *noteman.Note) {
 		filePath = note.FilePath
 	}
 
-	rawText, err := ocrapi.GetTextFromFile(filePath)
+	rawText, err := app.OCRService.GetTextFromFile(filePath)
 	if err != nil {
 		app.ErrorLog.Println("OCR failed: ", err)
 		markNoteProcessingFailed(note)
@@ -44,7 +42,7 @@ func processNote(note *noteman.Note) {
 		app.ErrorLog.Println("failed to save note: ", err)
 	}
 
-	output, err := eguneapi.GenerateNote(rawText)
+	output, err := app.EguneService.GenerateNote(rawText)
 	if err != nil {
 		app.ErrorLog.Println("failed to generate note content: ", err)
 		markNoteProcessingFailed(note)

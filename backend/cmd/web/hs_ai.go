@@ -9,7 +9,6 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
-	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/eguneapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 )
 
@@ -157,7 +156,7 @@ func askCourseChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	answer, err := eguneapi.AnswerQuestion(context, question)
+	answer, err := app.EguneService.AnswerQuestion(context, question)
 	if err != nil {
 		oapi.ServerError(w, err)
 		return

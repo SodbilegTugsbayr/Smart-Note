@@ -45,6 +45,10 @@ var (
 	Courses        *courseman.Service
 	GoogleOAuth2   *easyOAuth2.EasyOAuthClient
 	FacebookOAuth2 *easyOAuth2.EasyOAuthClient
+
+	//AIService
+	EguneService *eguneapi.EguneService
+	OCRService   *ocrapi.OcrService
 )
 
 func Init(path string) {
@@ -93,12 +97,8 @@ func Init(path string) {
 	Notes = noteman.NewService(DB, InfoLog, ErrorLog)
 	Quizzes = quizman.NewService(DB, InfoLog, ErrorLog)
 
-	eguneapi.SetBaseURL(Config.EguneAPI.BaseURL)
-	eguneapi.SetAPIKey(Config.EguneAPI.APIKey)
-	eguneapi.SetModel(Config.EguneAPI.Model)
-
-	ocrapi.SetBaseURL(Config.OCRAPI.BaseURL)
-	ocrapi.SetAPIKey(Config.OCRAPI.APIKey)
+	EguneService = eguneapi.NewService(Config.EguneAPI.BaseURL, Config.EguneAPI.APIKey, Config.EguneAPI.Model)
+	OCRService = ocrapi.NewService(Config.OCRAPI.BaseURL, Config.OCRAPI.APIKey)
 
 	Session = sessions.New([]byte(Config.SessionSecret))
 	Session.Lifetime = 7 * 24 * time.Hour

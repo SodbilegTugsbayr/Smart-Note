@@ -12,26 +12,19 @@ import (
 	"time"
 )
 
-var (
-	baseURL = "https://api.chimege.com/v1.2/court/ocr"
-	apiKey  = "secret"
-)
-
-func SetBaseURL(url string) {
-	baseURL = url
+type OcrService struct {
+	BaseURL string
+	APIKey  string
 }
 
-func SetAPIKey(key string) {
-	apiKey = key
+func NewService(baseUrl, apiKey string) *OcrService {
+	return &OcrService{
+		BaseURL: baseUrl,
+		APIKey:  apiKey,
+	}
 }
 
-type OCRResult struct {
-	FileName  string `json:"file_name"`
-	PageCount int    `json:"page_count"`
-	UUID      string `json:"uuid"`
-}
-
-func pushFile(filename string) (*OCRResult, error) {
+func (s *OcrService) pushFile(filename string) (*OCRResult, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -55,7 +48,7 @@ func pushFile(filename string) (*OCRResult, error) {
 
 	req, err := http.NewRequest(
 		"POST",
-		baseURL,
+		s.BaseURL,
 		bytes.NewBuffer(data),
 	)
 	if err != nil {
@@ -63,7 +56,7 @@ func pushFile(filename string) (*OCRResult, error) {
 	}
 
 	req.Header.Set("Content-Type", mimeType)
-	req.Header.Set("Token", apiKey)
+	req.Header.Set("Token", s.APIKey)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -88,27 +81,14 @@ func pushFile(filename string) (*OCRResult, error) {
 	return &result, nil
 }
 
-type OCRTranscript struct {
-	Done   bool `json:"done"`
-	Result struct {
-		FailedPages []int  `json:"failed_pages"`
-		File        string `json:"file"`
-		OCR         []struct {
-			Page int    `json:"page"`
-			Text string `json:"text"`
-		} `json:"ocr"`
-		SuccessPages []int `json:"success_pages"`
-	} `json:"result"`
-}
-
-func getOutputText(uuid string) (*OCRTranscript, error) {
+func (s *OcrService) getOutputText(uuid string) (*OCRTranscript, error) {
 	req, _ := http.NewRequest(
 		"GET",
 		"https://api.chimege.com/v1.2/court/ocr-transcript",
 		nil,
 	)
 
-	req.Header.Set("Token", apiKey)
+	req.Header.Set("Token", s.APIKey)
 	req.Header.Set("UUID", uuid)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -129,8 +109,8 @@ func getOutputText(uuid string) (*OCRTranscript, error) {
 	return data, nil
 }
 
-func GetTextFromFile(filename string) (string, error) {
-	result, err := pushFile(filename)
+func (s *OcrService) GetTextFromFile(filename string) (string, error) {
+	result, err := s.pushFile(filename)
 	if err != nil {
 		return "", err
 	}
@@ -144,7 +124,7 @@ func GetTextFromFile(filename string) (string, error) {
 		case <-timeout:
 			return "", fmt.Errorf("timeout waiting for OCR result")
 		case <-ticker.C:
-			output, err := getOutputText(result.UUID)
+			output, err := s.getOutputText(result.UUID)
 			if err != nil {
 				return "", err
 			}
