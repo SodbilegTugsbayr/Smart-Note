@@ -19,7 +19,7 @@ const isCompleted = computed(() => props.course.status === "completed")
             class="w-10 h-10 rounded-lg flex items-center justify-center"
             :class="isCompleted ? 'gradient-teal' : 'gradient-indigo'"
           >
-            <component :is="`${course.icon}Icon`" class="w-5 h-5" />
+            <component :is="`${course.icon}Icon`" class="w-5 h-5 text-white" />
           </div>
           <div>
             <p class="font-heading text-lg text-foreground leading-tight">
