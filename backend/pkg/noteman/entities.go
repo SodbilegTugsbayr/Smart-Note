@@ -1,7 +1,10 @@
 package noteman
 
 import (
+	"strings"
+
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/entities"
+	"gorm.io/gorm"
 )
 
 const (
@@ -21,12 +24,22 @@ type Note struct {
 	StartPage     int           `json:"start_page"`
 	EndPage       int           `json:"end_page"`
 	FilePath      string        `json:"-"`
+	HasFile       bool          `gorm:"-" json:"has_file"`
 	Summary       string        `json:"summary"`
 	Status        string        `json:"status"`
 	ProcessStatus string        `json:"process_status"`
 	RawContent    string        `json:"raw_content"`
 	KeyConcepts   []*KeyConcept `gorm:"serializer:json;type:jsonb" json:"key_concepts,omitempty"`
 	FlashCards    []*FlashCard  `gorm:"serializer:json;type:jsonb" json:"flash_cards,omitempty"`
+}
+
+func (n *Note) AfterFind(tx *gorm.DB) error {
+	n.HasFile = strings.TrimSpace(n.FilePath) != ""
+	return nil
+}
+
+func (n *Note) PrepareResponse() {
+	n.HasFile = strings.TrimSpace(n.FilePath) != ""
 }
 
 type KeyConcept struct {

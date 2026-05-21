@@ -1,5 +1,5 @@
 <script setup>
-defineProps({
+const props = defineProps({
   notes: { type: Array, default: () => [] },
   activeNoteId: { type: [String, Number], default: null },
 })

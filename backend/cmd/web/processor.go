@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
@@ -28,6 +29,11 @@ func processNote(note *noteman.Note) {
 		filePath = tempFile
 	} else {
 		filePath = note.FilePath
+	}
+	if strings.TrimSpace(filePath) == "" {
+		app.ErrorLog.Println("note has no source file")
+		markNoteProcessingFailed(note)
+		return
 	}
 
 	rawText, err := app.OCRService.GetTextFromFile(filePath)

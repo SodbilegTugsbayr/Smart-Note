@@ -41,7 +41,7 @@ func processCourseNotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, note := range course.Notes {
-		if note.ProcessStatus != noteman.PROCESS_STATUS_COMPLETED || strings.TrimSpace(note.Summary) == "" {
+		if noteHasSourceFile(note) && (note.ProcessStatus != noteman.PROCESS_STATUS_COMPLETED || strings.TrimSpace(note.Summary) == "") {
 			processNote(note)
 		}
 	}
@@ -71,7 +71,7 @@ func generateCourseFlashcards(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, note := range course.Notes {
-		if len(note.FlashCards) == 0 {
+		if noteHasSourceFile(note) && len(note.FlashCards) == 0 {
 			processNote(note)
 		}
 	}
@@ -190,6 +190,10 @@ func buildCourseContext(course *courseman.Course) string {
 	}
 
 	return builder.String()
+}
+
+func noteHasSourceFile(note *noteman.Note) bool {
+	return strings.TrimSpace(note.FilePath) != ""
 }
 
 func truncateRunes(value string, limit int) string {

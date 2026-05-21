@@ -58,6 +58,7 @@ func routes() http.Handler {
 				r.Get("/", getCourse)
 				r.Patch("/", updateCourse)
 				r.Delete("/", deleteCourse)
+				r.Post("/notes", createCourseNote)
 			})
 		})
 
@@ -66,12 +67,14 @@ func routes() http.Handler {
 				r.Get("/", getCourse)
 				r.Patch("/", updateCourse)
 				r.Delete("/", deleteCourse)
+				r.Post("/notes", createCourseNote)
 			})
 		})
 
 		r.Route("/notes", func(r chi.Router) {
 			r.With(setChosenNote).Route("/{NoteID}", func(r chi.Router) {
 				r.Patch("/", updateNote)
+				r.Post("/file", uploadNoteFile)
 			})
 		})
 

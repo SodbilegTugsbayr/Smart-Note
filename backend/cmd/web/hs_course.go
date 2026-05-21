@@ -289,8 +289,6 @@ func validateAndSaveFileToDisk(fh *multipart.FileHeader, dir string) (string, er
 	allowed := map[string]bool{
 		"image/jpeg":      true,
 		"image/png":       true,
-		"image/gif":       true,
-		"image/webp":      true,
 		"application/pdf": true,
 	}
 

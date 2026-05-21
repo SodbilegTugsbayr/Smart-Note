@@ -142,6 +142,7 @@ function selectNote(id) {
               :course="course"
               :active-note-id="activeNoteId"
               @update="handleUpdate"
+              @note-select="selectNote"
             />
           </TabsContent>
           <TabsContent value="flashcards">

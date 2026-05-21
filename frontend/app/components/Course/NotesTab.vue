@@ -3,35 +3,73 @@ const props = defineProps({
   course: { type: Object, required: true },
   activeNoteId: { type: [String, Number], default: null },
 })
-const emit = defineEmits(["update"])
+const emit = defineEmits(["update", "note-select"])
 
 const processing = ref(false)
+const uploading = ref(false)
+const adding = ref(false)
 const saving = ref(false)
 const progress = ref(0)
+const errorMessage = ref("")
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
   return notes.find((note) => note.id === props.activeNoteId) || notes[0] || null
 })
+const title = ref("")
 const content = ref("")
+const canAttachFile = computed(
+  () => activeNote.value && !activeNote.value.is_from_book && !activeNote.value.has_file,
+)
 
 watch(
   activeNote,
   (note) => {
+    title.value = note?.title || ""
     content.value = note?.summary || ""
+    errorMessage.value = ""
   },
   { immediate: true },
 )
 
+async function handleAddNote() {
+  adding.value = true
+  errorMessage.value = ""
+
+  try {
+    const nextNumber = (props.course.notes || []).length + 1
+    const savedNote = await $fetch(`/api/courses/${props.course.id}/notes`, {
+      method: "POST",
+      body: { title: `Шинэ тэмдэглэл ${nextNumber}` },
+    })
+    emit("update", {
+      ...props.course,
+      notes: [...(props.course.notes || []), savedNote],
+    })
+    emit("note-select", savedNote.id)
+  } catch (err) {
+    errorMessage.value = err?.data?.message || "Тэмдэглэл нэмэхэд алдаа гарлаа"
+  } finally {
+    adding.value = false
+  }
+}
+
 async function handleSave() {
   if (!activeNote.value) return
+  const cleanTitle = title.value.trim()
+  if (!cleanTitle) {
+    errorMessage.value = "Гарчиг оруулна уу"
+    return
+  }
 
   saving.value = true
+  errorMessage.value = ""
   try {
     const savedNote = await $fetch(`/api/notes/${activeNote.value.id}`, {
       method: "PATCH",
-      body: { summary: content.value },
+      body: { title: cleanTitle, summary: content.value },
     })
+    title.value = savedNote.title || ""
     content.value = savedNote.summary || ""
     emit("update", {
       ...props.course,
@@ -39,14 +77,18 @@ async function handleSave() {
         note.id === savedNote.id ? savedNote : note,
       ),
     })
+  } catch (err) {
+    errorMessage.value = err?.data?.message || "Тэмдэглэл хадгалахад алдаа гарлаа"
   } finally {
     saving.value = false
   }
 }
 
 async function handleAIProcess() {
+  if (uploading.value) return
   processing.value = true
   progress.value = 0
+  errorMessage.value = ""
 
   const interval = setInterval(() => {
     progress.value = Math.min(progress.value + Math.random() * 15, 90)
@@ -65,28 +107,88 @@ async function handleAIProcess() {
       updatedCourse.notes?.[0]
 
     if (updatedActiveNote) {
+      title.value = updatedActiveNote.title || ""
       content.value = updatedActiveNote.summary || ""
     }
     emit("update", updatedCourse)
-  } catch {
+  } catch (err) {
     clearInterval(interval)
+    errorMessage.value = err?.data?.message || "AI боловсруулахад алдаа гарлаа"
   } finally {
     processing.value = false
   }
 }
 
 function handleFileAttach() {
+  if (!canAttachFile.value || uploading.value || processing.value) return
+
   const input = document.createElement("input")
   input.type = "file"
+  input.accept = ".pdf,.png,.jpg,.jpeg"
   input.onchange = async (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files?.[0]
     if (!file) return
+
+    const targetNoteId = activeNote.value?.id
+    if (!targetNoteId) return
+
     const formData = new FormData()
     formData.append("file", file)
-    const { file_url } = await $fetch("/api/upload", { method: "POST", body: formData })
-    content.value += `\n[${file.name}](${file_url})`
+
+    uploading.value = true
+    progress.value = 0
+    errorMessage.value = ""
+    const interval = setInterval(() => {
+      progress.value = Math.min(progress.value + Math.random() * 12, 90)
+    }, 500)
+
+    try {
+      const savedNote = await $fetch(`/api/notes/${targetNoteId}/file`, {
+        method: "POST",
+        body: formData,
+      })
+      clearInterval(interval)
+      progress.value = 100
+
+      if (activeNote.value?.id === savedNote.id) {
+        title.value = savedNote.title || ""
+        content.value = savedNote.summary || ""
+      }
+      emit("update", {
+        ...props.course,
+        notes: (props.course.notes || []).map((note) =>
+          note.id === savedNote.id ? savedNote : note,
+        ),
+      })
+    } catch (err) {
+      clearInterval(interval)
+      errorMessage.value = err?.data?.message || "Файл боловсруулахад алдаа гарлаа"
+    } finally {
+      uploading.value = false
+    }
   }
   input.click()
+}
+
+function noteStatusText(note) {
+  if (!note) return ""
+  if (note.process_status === "completed") return "Дууссан"
+  if (note.process_status === "processing") return "Боловсруулж байна"
+  if (note.process_status === "failed") return "Алдаа"
+  return "Ноорог"
+}
+
+function noteStatusClass(note) {
+  if (note?.process_status === "completed") {
+    return "bg-teal-500/10 text-teal-700 border border-teal-500/20"
+  }
+  if (note?.process_status === "failed") {
+    return "bg-red-500/10 text-red-700 border border-red-500/20"
+  }
+  if (note?.process_status === "processing") {
+    return "bg-indigo-500/10 text-indigo-700 border border-indigo-500/20"
+  }
+  return "bg-slate-100 text-slate-600 border border-slate-200"
 }
 </script>
 
@@ -94,8 +196,17 @@ function handleFileAttach() {
   <div class="space-y-4">
     <div class="flex items-center gap-2 flex-wrap">
       <button
+        @click="handleAddNote"
+        :disabled="adding"
+        class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
+      >
+        <Loader2Icon v-if="adding" class="w-4 h-4 animate-spin" />
+        <PlusIcon v-else class="w-4 h-4" />
+        Тэмдэглэл нэмэх
+      </button>
+      <button
         @click="handleAIProcess"
-        :disabled="processing"
+        :disabled="processing || uploading"
         class="gradient-indigo text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         <Loader2Icon v-if="processing" class="w-4 h-4 animate-spin" />
@@ -103,15 +214,18 @@ function handleFileAttach() {
         AI боловсруулах
       </button>
       <button
+        v-if="canAttachFile"
         @click="handleFileAttach"
+        :disabled="uploading || processing"
         class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
       >
-        <PaperclipIcon class="w-4 h-4" />
+        <Loader2Icon v-if="uploading" class="w-4 h-4 animate-spin" />
+        <PaperclipIcon v-else class="w-4 h-4" />
         Файл хавсаргах
       </button>
       <button
         @click="handleSave"
-        :disabled="saving || !activeNote"
+        :disabled="saving || uploading || !activeNote"
         class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors ml-auto"
       >
         <Loader2Icon v-if="saving" class="w-4 h-4 animate-spin" />
@@ -120,10 +234,14 @@ function handleFileAttach() {
       </button>
     </div>
 
+    <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
+
     <!-- Progress bar -->
-    <div v-if="processing" class="glass-card rounded-xl p-4 space-y-3">
+    <div v-if="processing || uploading" class="glass-card rounded-xl p-4 space-y-3">
       <div class="flex items-center justify-between">
-        <span class="text-sm text-muted-foreground">AI боловсруулж байна...</span>
+        <span class="text-sm text-muted-foreground">
+          {{ uploading ? "Файл уншиж, тэмдэглэл үүсгэж байна..." : "AI боловсруулж байна..." }}
+        </span>
         <span class="text-sm font-medium text-indigo-600">{{ Math.round(progress) }}%</span>
       </div>
       <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -137,18 +255,16 @@ function handleFileAttach() {
     <!-- Selected note content -->
     <div v-if="activeNote" class="glass-card rounded-xl p-5 space-y-4">
       <div class="flex items-start justify-between gap-2">
-        <h3 class="text-sm font-medium text-foreground">
-          {{ activeNote.title || "Гарчиггүй тэмдэглэл" }}
-        </h3>
+        <input
+          v-model="title"
+          class="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
+          placeholder="Гарчиггүй тэмдэглэл"
+        />
         <span
           class="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-          :class="
-            activeNote.process_status === 'completed'
-              ? 'bg-teal-500/10 text-teal-700 border border-teal-500/20'
-              : 'bg-indigo-500/10 text-indigo-700 border border-indigo-500/20'
-          "
+          :class="noteStatusClass(activeNote)"
         >
-          {{ activeNote.process_status === "completed" ? "Дууссан" : "Боловсруулж байна" }}
+          {{ noteStatusText(activeNote) }}
         </span>
       </div>
 
