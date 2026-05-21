@@ -70,13 +70,8 @@ func updateNote(w http.ResponseWriter, r *http.Request) {
 	chosenNote := r.Context().Value(app.ContextKeyChosenNote).(*noteman.Note)
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
-	course, err := app.Courses.GetByID(chosenNote.CourseID)
-	if err != nil {
-		if errors.Is(err, courseman.ErrNotFound) {
-			oapi.NotFound(w)
-			return
-		}
-		oapi.ServerError(w, err)
+	course, ok := noteCourseForRequest(w, chosenNote)
+	if !ok {
 		return
 	}
 	if !canAccessCourse(loggedUser, course) {
@@ -112,17 +107,34 @@ func updateNote(w http.ResponseWriter, r *http.Request) {
 	oapi.SendResp(w, savedNote)
 }
 
+func deleteNote(w http.ResponseWriter, r *http.Request) {
+	chosenNote := r.Context().Value(app.ContextKeyChosenNote).(*noteman.Note)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
+
+	course, ok := noteCourseForRequest(w, chosenNote)
+	if !ok {
+		return
+	}
+	if !canAccessCourse(loggedUser, course) {
+		oapi.Forbidden(w)
+		return
+	}
+
+	if err := deleteNoteWithChildren(chosenNote); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+
+	chosenNote.PrepareResponse()
+	oapi.SendResp(w, chosenNote)
+}
+
 func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 	chosenNote := r.Context().Value(app.ContextKeyChosenNote).(*noteman.Note)
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
-	course, err := app.Courses.GetByID(chosenNote.CourseID)
-	if err != nil {
-		if errors.Is(err, courseman.ErrNotFound) {
-			oapi.NotFound(w)
-			return
-		}
-		oapi.ServerError(w, err)
+	course, ok := noteCourseForRequest(w, chosenNote)
+	if !ok {
 		return
 	}
 	if !canAccessCourse(loggedUser, course) {
@@ -198,13 +210,8 @@ func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {
 	chosenNote := r.Context().Value(app.ContextKeyChosenNote).(*noteman.Note)
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
-	course, err := app.Courses.GetByID(chosenNote.CourseID)
-	if err != nil {
-		if errors.Is(err, courseman.ErrNotFound) {
-			oapi.NotFound(w)
-			return
-		}
-		oapi.ServerError(w, err)
+	course, ok := noteCourseForRequest(w, chosenNote)
+	if !ok {
 		return
 	}
 	if !canAccessCourse(loggedUser, course) {
@@ -244,4 +251,32 @@ func courseForRequest(w http.ResponseWriter, r *http.Request, courseID int) (*co
 	}
 
 	return course, true
+}
+
+func noteCourseForRequest(w http.ResponseWriter, note *noteman.Note) (*courseman.Course, bool) {
+	course, err := app.Courses.GetByID(note.CourseID)
+	if err != nil {
+		if errors.Is(err, courseman.ErrNotFound) {
+			oapi.NotFound(w)
+			return nil, false
+		}
+		oapi.ServerError(w, err)
+		return nil, false
+	}
+
+	return course, true
+}
+
+func deleteNoteWithChildren(note *noteman.Note) error {
+	quizzes, _, err := app.Quizzes.GetAll(&quizman.Filter{NoteID: note.ID}, 1, 0)
+	if err != nil {
+		return err
+	}
+	for _, quiz := range quizzes {
+		if err := app.Quizzes.Delete(quiz.ID); err != nil {
+			return err
+		}
+	}
+
+	return app.Notes.Delete(note.ID)
 }

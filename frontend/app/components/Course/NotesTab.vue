@@ -223,11 +223,11 @@ function noteStatusClass(note) {
     <!-- Selected note content -->
     <div v-if="activeNote" class="glass-card rounded-xl p-5 space-y-4">
       <div class="flex items-start justify-between gap-2">
-        <input
-          v-model="title"
+        <p
           class="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
-          placeholder="Гарчиггүй тэмдэглэл"
-        />
+        >
+          {{ title }}
+        </p>
         <span
           class="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
           :class="noteStatusClass(activeNote)"

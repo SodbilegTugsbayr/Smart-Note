@@ -74,6 +74,7 @@ func routes() http.Handler {
 		r.Route("/notes", func(r chi.Router) {
 			r.With(setChosenNote).Route("/{NoteID}", func(r chi.Router) {
 				r.Patch("/", updateNote)
+				r.Delete("/", deleteNote)
 				r.Post("/file", uploadNoteFile)
 				r.Get("/quizzes", getNoteQuizzes)
 			})

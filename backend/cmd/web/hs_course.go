@@ -266,6 +266,13 @@ func deleteCourse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for _, note := range chosenCourse.Notes {
+		if err := deleteNoteWithChildren(note); err != nil {
+			oapi.ServerError(w, err)
+			return
+		}
+	}
+
 	if err := app.Courses.Delete(chosenCourse.ID); err != nil {
 		oapi.ServerError(w, err)
 		return
