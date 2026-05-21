@@ -11,8 +11,7 @@ import (
 )
 
 func uploadFile(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		oapi.CustomError(w, http.StatusBadRequest, "Invalid form data")
+	if !parseLimitedMultipartForm(w, r) {
 		return
 	}
 

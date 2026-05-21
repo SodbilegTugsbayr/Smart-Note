@@ -59,8 +59,7 @@ type Section struct {
 func saveCourse(w http.ResponseWriter, r *http.Request) {
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		oapi.CustomError(w, http.StatusBadRequest, "Invalid form data")
+	if !parseLimitedMultipartForm(w, r) {
 		return
 	}
 
@@ -110,6 +109,7 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 		}
 
 		course.FilePath = path
+		course.HasBook = true
 		var sections []*courseman.Section
 		sectionsRaw := strings.TrimSpace(r.FormValue("sections"))
 		if sectionsRaw != "" {
@@ -131,14 +131,33 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var note *noteman.Note
-	if len(course.Sections) > 0 {
-		for _, s := range course.Sections {
+	if strings.TrimSpace(savedCourse.FilePath) != "" {
+		if len(course.Sections) > 0 {
+			for _, s := range course.Sections {
+				note = &noteman.Note{
+					CourseID:      savedCourse.ID,
+					Title:         s.SectionName,
+					IsFromBook:    true,
+					StartPage:     s.StartPage,
+					EndPage:       s.EndPage,
+					FilePath:      savedCourse.FilePath,
+					Status:        noteman.STATUS_IN_PROGRESS,
+					ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
+				}
+
+				savedNote, err := app.Notes.Save(note)
+				if err != nil {
+					oapi.ServerError(w, err)
+					return
+				}
+
+				go processNote(savedNote)
+			}
+		} else {
 			note = &noteman.Note{
 				CourseID:      savedCourse.ID,
-				Title:         s.SectionName,
-				IsFromBook:    true,
-				StartPage:     s.StartPage,
-				EndPage:       s.EndPage,
+				Title:         savedCourse.Title,
+				IsFromBook:    false,
 				FilePath:      savedCourse.FilePath,
 				Status:        noteman.STATUS_IN_PROGRESS,
 				ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
@@ -265,9 +284,7 @@ func canAccessCourse(user *userman.User, course *courseman.Course) bool {
 }
 
 func validateAndSaveFileToDisk(fh *multipart.FileHeader, dir string) (string, error) {
-	const maxFileSize = 50 << 20
-
-	if fh.Size > maxFileSize {
+	if fh.Size > maxUploadFileSize {
 		return "", fmt.Errorf("file too large: max 50MB allowed")
 	}
 

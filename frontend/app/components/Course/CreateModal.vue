@@ -10,6 +10,7 @@ const extracting = ref(false)
 const isDragging = ref(false)
 const isIconOpen = ref(false)
 const errorMessage = ref("")
+const MAX_UPLOAD_FILE_SIZE = 50 * 1024 * 1024
 
 const form = reactive({
   title: "",
@@ -55,13 +56,13 @@ async function handleSubmit() {
       formData.append("sections", JSON.stringify(buildSections()))
     }
 
-    await $fetch("/api/course", { method: "POST", body: formData })
-    emit("created")
-  } catch {
-    errorMessage.value = "Хичээл үүсгэхэд алдаа гарлаа"
+    const savedCourse = await $fetch("/api/course", { method: "POST", body: formData })
+    resetModal()
+    emit("created", savedCourse)
+  } catch (err) {
+    errorMessage.value = err?.data?.message || err?.data || "Хичээл үүсгэхэд алдаа гарлаа"
   } finally {
     loading.value = false
-    resetModal()
   }
 }
 
@@ -71,21 +72,25 @@ function buildSections() {
     const selectedTopics = ch.topics.filter((t) => t.selected)
     if (selectedTopics.length > 0) {
       for (const t of selectedTopics) {
-        sections.push({
-          section_name: `${ch.title} — ${t.title}`,
-          start_page: t.startPage,
-          end_page: t.endPage,
-        })
+        appendSection(sections, `${ch.title} — ${t.title}`, t.startPage, t.endPage)
       }
     } else if (ch.selected) {
-      sections.push({
-        section_name: ch.title,
-        start_page: ch.startPage,
-        end_page: ch.endPage,
-      })
+      appendSection(sections, ch.title, ch.startPage, ch.endPage)
     }
   }
   return sections
+}
+
+function appendSection(sections, title, startPage, endPage) {
+  const start = Number(startPage)
+  const end = Number(endPage)
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= 0 || end < start) return
+
+  sections.push({
+    section_name: title,
+    start_page: start,
+    end_page: end,
+  })
 }
 
 // ── File handling ─────────────────────────────────────────────────────────────
@@ -93,6 +98,13 @@ function buildSections() {
 async function handleFileDrop(files) {
   const file = files?.[0]
   if (!file) return
+
+  errorMessage.value = ""
+  if (file.size > MAX_UPLOAD_FILE_SIZE) {
+    clearFile()
+    errorMessage.value = "Файлын хэмжээ 50MB-аас бага байх ёстой"
+    return
+  }
 
   form.file = file
   form.fileName = file.name

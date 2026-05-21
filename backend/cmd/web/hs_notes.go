@@ -138,8 +138,7 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseMultipartForm(50 << 20); err != nil {
-		oapi.CustomError(w, http.StatusBadRequest, "Invalid form data")
+	if !parseLimitedMultipartForm(w, r) {
 		return
 	}
 

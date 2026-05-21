@@ -47,7 +47,7 @@ async function removeUser(user) {
           <tr v-for="user in users" :key="user.id" class="border-t border-slate-200">
             <td class="px-4 py-3 text-muted-foreground">{{ user.id }}</td>
             <td class="px-4 py-3 text-foreground">
-              {{ [user.first_name, user.last_name].filter(Boolean).join(" ") || "-" }}
+              {{ [user.firstname, user.lastname].filter(Boolean).join(" ") || "-" }}
             </td>
             <td class="px-4 py-3 text-muted-foreground">{{ user.email }}</td>
             <td class="px-4 py-3">

@@ -47,18 +47,21 @@ const isCompleted = computed(() => props.course.status === "completed")
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
-              <button class="p-1 rounded-md hover:bg-slate-100 transition">
+              <button
+                class="p-1 rounded-md hover:bg-slate-100 transition"
+                @click.prevent.stop="() => {}"
+              >
                 <EllipsisVerticalIcon class="w-5 h-5" />
               </button>
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" class="w-44">
-              <DropdownMenuItem @click="emit('edit', course)"> Засах </DropdownMenuItem>
+              <DropdownMenuItem @click.prevent.stop="emit('edit', course)"> Засах </DropdownMenuItem>
 
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                @click="emit('delete', course)"
+                @click.prevent.stop="emit('delete', course)"
                 class="text-red-600 focus:text-red-600"
               >
                 Устгах
