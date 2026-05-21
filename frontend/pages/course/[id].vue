@@ -3,9 +3,27 @@ const route = useRoute()
 const courseId = route.params.id
 
 const sidebarOpen = ref(false)
-const activeTopic = ref(null)
+const activeNoteId = ref(null)
 
 const { data: course, refresh } = await useFetch(`/api/course/${courseId}`)
+
+const notes = computed(() => course.value?.notes || [])
+
+watch(
+  notes,
+  (nextNotes) => {
+    if (!nextNotes.length) {
+      activeNoteId.value = null
+      return
+    }
+
+    const hasActiveNote = nextNotes.some((note) => note.id === activeNoteId.value)
+    if (!hasActiveNote) {
+      activeNoteId.value = nextNotes[0].id
+    }
+  },
+  { immediate: true },
+)
 
 async function togglePublic() {
   const newVal = !course.value.is_public
@@ -22,6 +40,11 @@ function copyLink() {
 
 function handleUpdate(updated) {
   course.value = updated
+}
+
+function selectNote(id) {
+  activeNoteId.value = id
+  sidebarOpen.value = false
 }
 </script>
 
@@ -47,13 +70,8 @@ function handleUpdate(updated) {
     >
       <CourseChapterSideBar
         :notes="course.notes || []"
-        :active-topic-id="activeTopic"
-        @topic-select="
-          (id) => {
-            activeTopic = id
-            sidebarOpen = false
-          }
-        "
+        :active-note-id="activeNoteId"
+        @note-select="selectNote"
       />
     </aside>
 
@@ -120,7 +138,11 @@ function handleUpdate(updated) {
           </TabsList>
 
           <TabsContent value="notes">
-            <CourseNotesTab :course="course" @update="handleUpdate" />
+            <CourseNotesTab
+              :course="course"
+              :active-note-id="activeNoteId"
+              @update="handleUpdate"
+            />
           </TabsContent>
           <TabsContent value="flashcards">
             <CourseFlashCardsTab :course="course" @update="handleUpdate" />

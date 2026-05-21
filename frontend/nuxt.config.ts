@@ -8,16 +8,10 @@ const ws_domain = process.env.WS_DOMAIN
 
 console.log("Server type:", process.env.SERVER_TYPE)
 
-const nitro = process.env.SERVER_TYPE == "local"
-  ? {
+const nitro =  {
     routeRules: {
       "/api/**": { proxy: "http://localhost:4000/api/**" },
       "/pub/**": { proxy: "http://localhost:4000/pub/**" },
-    },
-  } : {
-    routeRules: {
-      "/api/**": { proxy: "http://localhost:10000/api/**" },
-      "/pub/**": { proxy: "http://localhost:10000/pub/**" },
     },
   }
 
@@ -58,8 +52,8 @@ export default defineNuxtConfig({
   
 
   components: [
-    { path: '~/app/components/ui', pathPrefix: false },
-    '~/app/components',
+    { path: "~/app/components/ui", pathPrefix: false, extensions: ["vue"] },
+    { path: "~/app/components", extensions: ["vue"] },
   ],
   
   vite: {

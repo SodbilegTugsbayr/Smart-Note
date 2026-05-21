@@ -1,63 +1,37 @@
 <script setup>
-const props = defineProps({
+defineProps({
   notes: { type: Array, default: () => [] },
-  activeTopicId: { type: [String, Number], default: null },
+  activeNoteId: { type: [String, Number], default: null },
 })
 
-const emit = defineEmits(["topic-select"])
-
-const expandedSections = ref(props.notes.map((n) => n.id))
-
-function toggleSection(id) {
-  if (expandedSections.value.includes(id)) {
-    expandedSections.value = expandedSections.value.filter((i) => i !== id)
-  } else {
-    expandedSections.value.push(id)
-  }
-}
+const emit = defineEmits(["note-select"])
 </script>
 
 <template>
   <div class="p-3">
     <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 mb-3">
-      Агуулга
+      Тэмдэглэл
     </p>
 
     <div v-if="notes.length === 0" class="text-center py-4">
-      <p class="text-xs text-muted-foreground">Бүлэг байхгүй</p>
+      <p class="text-xs text-muted-foreground">Тэмдэглэл байхгүй</p>
     </div>
 
     <div v-else class="space-y-1">
-      <div v-for="note in notes" :key="note.id">
-        <button
-          @click="toggleSection(note.id)"
-          class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-foreground/80 hover:bg-slate-100 transition-colors"
-        >
-          <ChevronRightIcon
-            class="w-3.5 h-3.5 text-muted-foreground transition-transform flex-shrink-0"
-            :class="expandedSections.includes(note.id) ? 'rotate-90' : ''"
-          />
-          <BookOpenIcon class="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
-          <span class="truncate text-left flex-1 text-xs">{{ note.title }}</span>
-        </button>
-
-        <div v-if="expandedSections.includes(note.id)" class="ml-5 space-y-0.5 mt-0.5">
-          <button
-            v-for="concept in note.key_concepts || []"
-            :key="concept.concept"
-            @click="emit('topic-select', note.id)"
-            class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left"
-            :class="
-              activeTopicId === note.id
-                ? 'bg-indigo-500/10 text-indigo-700'
-                : 'text-muted-foreground hover:text-foreground hover:bg-slate-100'
-            "
-          >
-            <FileTextIcon class="w-3 h-3 flex-shrink-0" />
-            <span class="truncate">{{ concept.concept }}</span>
-          </button>
-        </div>
-      </div>
+      <button
+        v-for="note in notes"
+        :key="note.id"
+        @click="emit('note-select', note.id)"
+        class="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm transition-colors text-left"
+        :class="
+          activeNoteId === note.id
+            ? 'bg-indigo-500/10 text-indigo-700'
+            : 'text-foreground/80 hover:bg-slate-100'
+        "
+      >
+        <FileTextIcon class="w-3.5 h-3.5 flex-shrink-0" />
+        <span class="truncate flex-1 text-xs">{{ note.title || "Гарчиггүй тэмдэглэл" }}</span>
+      </button>
     </div>
   </div>
 </template>
