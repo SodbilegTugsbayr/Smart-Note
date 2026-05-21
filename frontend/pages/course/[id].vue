@@ -7,7 +7,9 @@ const activeNoteId = ref(null)
 
 const { data: course, refresh } = await useFetch(`/api/course/${courseId}`)
 
-const notes = computed(() => course.value?.notes || [])
+const notes = computed(() =>
+  [...(course.value?.notes || [])].sort((a, b) => Number(a.id || 0) - Number(b.id || 0)),
+)
 
 watch(
   notes,
@@ -42,6 +44,13 @@ function handleUpdate(updated) {
   course.value = updated
 }
 
+function handleNoteCreated(note) {
+  course.value = {
+    ...course.value,
+    notes: [...(course.value?.notes || []), note],
+  }
+}
+
 function selectNote(id) {
   activeNoteId.value = id
   sidebarOpen.value = false
@@ -69,9 +78,11 @@ function selectNote(id) {
       :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     >
       <CourseChapterSideBar
-        :notes="course.notes || []"
+        :course-id="course.id"
+        :notes="notes"
         :active-note-id="activeNoteId"
         @note-select="selectNote"
+        @note-created="handleNoteCreated"
       />
     </aside>
 
@@ -142,11 +153,14 @@ function selectNote(id) {
               :course="course"
               :active-note-id="activeNoteId"
               @update="handleUpdate"
-              @note-select="selectNote"
             />
           </TabsContent>
           <TabsContent value="flashcards">
-            <CourseFlashCardsTab :course="course" @update="handleUpdate" />
+            <CourseFlashCardsTab
+              :course="course"
+              :active-note-id="activeNoteId"
+              @update="handleUpdate"
+            />
           </TabsContent>
           <TabsContent value="quiz">
             <CourseQuizTab

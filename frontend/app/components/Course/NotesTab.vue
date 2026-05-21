@@ -3,11 +3,10 @@ const props = defineProps({
   course: { type: Object, required: true },
   activeNoteId: { type: [String, Number], default: null },
 })
-const emit = defineEmits(["update", "note-select"])
+const emit = defineEmits(["update"])
 
 const processing = ref(false)
 const uploading = ref(false)
-const adding = ref(false)
 const saving = ref(false)
 const progress = ref(0)
 const errorMessage = ref("")
@@ -31,28 +30,6 @@ watch(
   },
   { immediate: true },
 )
-
-async function handleAddNote() {
-  adding.value = true
-  errorMessage.value = ""
-
-  try {
-    const nextNumber = (props.course.notes || []).length + 1
-    const savedNote = await $fetch(`/api/courses/${props.course.id}/notes`, {
-      method: "POST",
-      body: { title: `Шинэ тэмдэглэл ${nextNumber}` },
-    })
-    emit("update", {
-      ...props.course,
-      notes: [...(props.course.notes || []), savedNote],
-    })
-    emit("note-select", savedNote.id)
-  } catch (err) {
-    errorMessage.value = err?.data?.message || "Тэмдэглэл нэмэхэд алдаа гарлаа"
-  } finally {
-    adding.value = false
-  }
-}
 
 async function handleSave() {
   if (!activeNote.value) return
@@ -195,15 +172,6 @@ function noteStatusClass(note) {
 <template>
   <div class="space-y-4">
     <div class="flex items-center gap-2 flex-wrap">
-      <button
-        @click="handleAddNote"
-        :disabled="adding"
-        class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
-      >
-        <Loader2Icon v-if="adding" class="w-4 h-4 animate-spin" />
-        <PlusIcon v-else class="w-4 h-4" />
-        Тэмдэглэл нэмэх
-      </button>
       <button
         @click="handleAIProcess"
         :disabled="processing || uploading"

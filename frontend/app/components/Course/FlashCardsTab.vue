@@ -1,6 +1,7 @@
 <script setup>
 const props = defineProps({
   course: { type: Object, required: true },
+  activeNoteId: { type: [String, Number], default: null },
 })
 const emit = defineEmits(["update"])
 
@@ -9,17 +10,29 @@ const newTerm = ref("")
 const newDef = ref("")
 const generating = ref(false)
 
-const cards = computed(() => {
-  const all = []
-  for (const note of props.course.notes || []) {
-    for (const fc of note.flash_cards || []) {
-      all.push({ ...fc, id: `${note.id}-${fc.question}` })
-    }
-  }
-  return all
+const activeNote = computed(() => {
+  const notes = props.course.notes || []
+  return notes.find((note) => note.id === props.activeNoteId) || notes[0] || null
 })
 
+const cards = computed(() => {
+  return (activeNote.value?.flash_cards || []).map((fc) => ({
+    ...fc,
+    id: `${activeNote.value.id}-${fc.question}`,
+  }))
+})
+
+watch(
+  () => props.activeNoteId,
+  () => {
+    showAdd.value = false
+    newTerm.value = ""
+    newDef.value = ""
+  },
+)
+
 async function handleAIGenerate() {
+  if (!activeNote.value) return
   generating.value = true
   try {
     const updatedCourse = await $fetch("/api/ai/generate-flashcards", {
@@ -33,10 +46,15 @@ async function handleAIGenerate() {
 }
 
 async function handleAdd() {
-  if (!newTerm.value.trim() || !newDef.value.trim()) return
+  if (!activeNote.value || !newTerm.value.trim() || !newDef.value.trim()) return
   const savedNote = await $fetch("/api/flashcards", {
     method: "POST",
-    body: { course_id: props.course.id, term: newTerm.value, definition: newDef.value },
+    body: {
+      course_id: props.course.id,
+      note_id: activeNote.value.id,
+      term: newTerm.value,
+      definition: newDef.value,
+    },
   })
   emit("update", {
     ...props.course,
@@ -53,7 +71,7 @@ async function handleAdd() {
     <div class="flex items-center gap-2 flex-wrap">
       <button
         @click="handleAIGenerate"
-        :disabled="generating"
+        :disabled="generating || !activeNote"
         class="gradient-indigo text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         <Loader2Icon v-if="generating" class="w-4 h-4 animate-spin" />
@@ -62,6 +80,7 @@ async function handleAdd() {
       </button>
       <button
         @click="showAdd = !showAdd"
+        :disabled="!activeNote"
         class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
       >
         <PlusIcon class="w-4 h-4" />
@@ -82,16 +101,20 @@ async function handleAdd() {
       />
       <button
         @click="handleAdd"
-        :disabled="!newTerm.trim() || !newDef.trim()"
+        :disabled="!activeNote || !newTerm.trim() || !newDef.trim()"
         class="gradient-indigo text-white px-4 py-2 rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50"
       >
         Хадгалах →
       </button>
     </div>
 
-    <div v-if="cards.length === 0 && !generating" class="text-center py-12">
+    <div v-if="!activeNote" class="text-center py-12">
+      <p class="text-muted-foreground text-sm">Тэмдэглэл сонгоно уу.</p>
+    </div>
+
+    <div v-else-if="cards.length === 0 && !generating" class="text-center py-12">
       <p class="text-muted-foreground text-sm">
-        Флаш карт байхгүй. AI-аар үүсгэх товчийг дарна уу.
+        Энэ тэмдэглэлд флаш карт байхгүй. AI-аар үүсгэх товчийг дарна уу.
       </p>
     </div>
 
