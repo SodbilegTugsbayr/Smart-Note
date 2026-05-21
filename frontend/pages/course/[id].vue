@@ -149,7 +149,11 @@ function selectNote(id) {
             <CourseFlashCardsTab :course="course" @update="handleUpdate" />
           </TabsContent>
           <TabsContent value="quiz">
-            <CourseQuizTab :course="course" @update="handleUpdate" />
+            <CourseQuizTab
+              :course="course"
+              :active-note-id="activeNoteId"
+              @update="handleUpdate"
+            />
           </TabsContent>
           <TabsContent value="chat">
             <CourseChatTab :course="course" />

@@ -14,6 +14,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/google/uuid"
 )
@@ -192,6 +193,39 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 	processNote(savedNote)
 	savedNote.PrepareResponse()
 	oapi.SendResp(w, savedNote)
+}
+
+func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {
+	chosenNote := r.Context().Value(app.ContextKeyChosenNote).(*noteman.Note)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
+
+	course, err := app.Courses.GetByID(chosenNote.CourseID)
+	if err != nil {
+		if errors.Is(err, courseman.ErrNotFound) {
+			oapi.NotFound(w)
+			return
+		}
+		oapi.ServerError(w, err)
+		return
+	}
+	if !canAccessCourse(loggedUser, course) {
+		oapi.Forbidden(w)
+		return
+	}
+
+	quizzes, total, err := app.Quizzes.GetAll(&quizman.Filter{
+		NoteID:  chosenNote.ID,
+		OrderBy: "id",
+	}, 1, 100)
+	if err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+
+	oapi.SendResp(w, map[string]interface{}{
+		"items": quizzes,
+		"total": total,
+	})
 }
 
 func courseForRequest(w http.ResponseWriter, r *http.Request, courseID int) (*courseman.Course, bool) {

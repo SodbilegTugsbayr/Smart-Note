@@ -14,5 +14,5 @@ type Quiz struct {
 	NoteID        int      `json:"note_id"`
 	Question      string   `json:"question"`
 	Options       []string `json:"options" gorm:"serializer:json"`
-	CorrectAnswer string   `json:"-"`
+	CorrectAnswer string   `json:"correct_answer"`
 }
