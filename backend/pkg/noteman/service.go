@@ -37,8 +37,12 @@ func (s *Service) parseFilter(filter *Filter) *gorm.DB {
 		query = query.Where("course_id = ?", filter.CourseID)
 	}
 
+	if filter.ProcessStatus != "" {
+		query = query.Where("process_status = ?", filter.ProcessStatus)
+	}
+
 	if filter.Keyword != "" {
-		query = query.Where("name ILIKE '%%' || ? || '%%' OR description ILIKE '%%' || ? || '%%'",
+		query = query.Where("title ILIKE '%%' || ? || '%%' OR summary ILIKE '%%' || ? || '%%'",
 			filter.Keyword, filter.Keyword)
 	}
 

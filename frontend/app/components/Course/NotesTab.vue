@@ -5,7 +5,6 @@ const props = defineProps({
 })
 const emit = defineEmits(["update"])
 
-const processing = ref(false)
 const uploading = ref(false)
 const saving = ref(false)
 const progress = ref(0)
@@ -61,43 +60,8 @@ async function handleSave() {
   }
 }
 
-async function handleAIProcess() {
-  if (uploading.value) return
-  processing.value = true
-  progress.value = 0
-  errorMessage.value = ""
-
-  const interval = setInterval(() => {
-    progress.value = Math.min(progress.value + Math.random() * 15, 90)
-  }, 500)
-
-  try {
-    const result = await $fetch("/api/ai/process-notes", {
-      method: "POST",
-      body: { course_id: props.course.id },
-    })
-    clearInterval(interval)
-    progress.value = 100
-    const updatedCourse = result?.course || { ...props.course }
-    const updatedActiveNote =
-      (updatedCourse.notes || []).find((note) => note.id === activeNote.value?.id) ||
-      updatedCourse.notes?.[0]
-
-    if (updatedActiveNote) {
-      title.value = updatedActiveNote.title || ""
-      content.value = updatedActiveNote.summary || ""
-    }
-    emit("update", updatedCourse)
-  } catch (err) {
-    clearInterval(interval)
-    errorMessage.value = err?.data?.message || "AI боловсруулахад алдаа гарлаа"
-  } finally {
-    processing.value = false
-  }
-}
-
 function handleFileAttach() {
-  if (!canAttachFile.value || uploading.value || processing.value) return
+  if (!canAttachFile.value || uploading.value) return
 
   const input = document.createElement("input")
   input.type = "file"
@@ -173,18 +137,9 @@ function noteStatusClass(note) {
   <div class="space-y-4">
     <div class="flex items-center gap-2 flex-wrap">
       <button
-        @click="handleAIProcess"
-        :disabled="processing || uploading"
-        class="gradient-indigo text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-      >
-        <Loader2Icon v-if="processing" class="w-4 h-4 animate-spin" />
-        <SparklesIcon v-else class="w-4 h-4" />
-        AI боловсруулах
-      </button>
-      <button
         v-if="canAttachFile"
         @click="handleFileAttach"
-        :disabled="uploading || processing"
+        :disabled="uploading"
         class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
       >
         <Loader2Icon v-if="uploading" class="w-4 h-4 animate-spin" />
@@ -205,10 +160,10 @@ function noteStatusClass(note) {
     <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
     <!-- Progress bar -->
-    <div v-if="processing || uploading" class="glass-card rounded-xl p-4 space-y-3">
+    <div v-if="uploading" class="glass-card rounded-xl p-4 space-y-3">
       <div class="flex items-center justify-between">
         <span class="text-sm text-muted-foreground">
-          {{ uploading ? "Файл уншиж, тэмдэглэл үүсгэж байна..." : "AI боловсруулж байна..." }}
+          Файл уншиж, тэмдэглэл үүсгэж байна...
         </span>
         <span class="text-sm font-medium text-indigo-600">{{ Math.round(progress) }}%</span>
       </div>

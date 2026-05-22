@@ -34,7 +34,7 @@ func (s *Service) parseFilter(filter *Filter) *gorm.DB {
 	}
 
 	if filter.Keyword != "" {
-		query = query.Where("name ILIKE '%%' || ? || '%%' OR description ILIKE '%%' || ? || '%%'",
+		query = query.Where("title ILIKE '%%' || ? || '%%' OR description ILIKE '%%' || ? || '%%'",
 			filter.Keyword, filter.Keyword)
 	}
 

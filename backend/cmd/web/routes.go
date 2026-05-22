@@ -51,6 +51,13 @@ func routes() http.Handler {
 		})
 		r.Post("/flashcards", addFlashcard)
 
+		r.With(requireAdmin).Route("/admin", func(r chi.Router) {
+			r.Get("/stats", getAdminStats)
+			r.Get("/courses", getAdminCourses)
+			r.Get("/notes", getAdminNotes)
+			r.With(setChosenNote).Post("/notes/{NoteID}/reprocess", reprocessAdminNote)
+		})
+
 		r.Route("/course", func(r chi.Router) {
 			r.Get("/", getUserCourses)
 			r.Post("/", saveCourse)
