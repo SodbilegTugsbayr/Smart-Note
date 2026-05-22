@@ -155,32 +155,36 @@ function selectNote(id) {
         <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           <!-- Tabs -->
           <Tabs default-value="notes" class="space-y-4">
-            <TabsList class="bg-slate-100 border border-slate-200 p-1 rounded-xl">
-              <TabsTrigger
-                value="notes"
-                class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
-              >
-                Тэмдэглэл
-              </TabsTrigger>
-              <TabsTrigger
-                value="flashcards"
-                class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
-              >
-                Флаш карт
-              </TabsTrigger>
-              <TabsTrigger
-                value="quiz"
-                class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
-              >
-                Тест
-              </TabsTrigger>
-              <TabsTrigger
-                value="chat"
-                class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
-              >
-                Chatbot
-              </TabsTrigger>
-            </TabsList>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <TabsList class="bg-slate-100 border border-slate-200 p-1 rounded-xl">
+                <TabsTrigger
+                  value="notes"
+                  class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
+                >
+                  Тэмдэглэл
+                </TabsTrigger>
+                <TabsTrigger
+                  value="flashcards"
+                  class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
+                >
+                  Флаш карт
+                </TabsTrigger>
+                <TabsTrigger
+                  value="quiz"
+                  class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
+                >
+                  Тест
+                </TabsTrigger>
+                <TabsTrigger
+                  value="chat"
+                  class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
+                >
+                  Chatbot
+                </TabsTrigger>
+              </TabsList>
+
+              <div id="course-notes-actions" class="flex items-center justify-end gap-2" />
+            </div>
 
             <TabsContent value="notes">
               <CourseNotesTab

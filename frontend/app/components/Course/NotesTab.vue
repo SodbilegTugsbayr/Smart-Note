@@ -135,27 +135,31 @@ function noteStatusClass(note) {
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center gap-2 flex-wrap">
-      <button
-        v-if="canAttachFile"
-        @click="handleFileAttach"
-        :disabled="uploading"
-        class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
-      >
-        <Loader2Icon v-if="uploading" class="w-4 h-4 animate-spin" />
-        <PaperclipIcon v-else class="w-4 h-4" />
-        Файл хавсаргах
-      </button>
-      <button
-        @click="handleSave"
-        :disabled="saving || uploading || !activeNote"
-        class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors ml-auto"
-      >
-        <Loader2Icon v-if="saving" class="w-4 h-4 animate-spin" />
-        <SaveIcon v-else class="w-4 h-4" />
-        Хадгалах
-      </button>
-    </div>
+    <ClientOnly>
+      <Teleport to="#course-notes-actions">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <button
+            v-if="canAttachFile"
+            @click="handleFileAttach"
+            :disabled="uploading"
+            class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
+          >
+            <Loader2Icon v-if="uploading" class="w-4 h-4 animate-spin" />
+            <PaperclipIcon v-else class="w-4 h-4" />
+            Файл хавсаргах
+          </button>
+          <button
+            @click="handleSave"
+            :disabled="saving || uploading || !activeNote"
+            class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
+          >
+            <Loader2Icon v-if="saving" class="w-4 h-4 animate-spin" />
+            <SaveIcon v-else class="w-4 h-4" />
+            Хадгалах
+          </button>
+        </div>
+      </Teleport>
+    </ClientOnly>
 
     <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
