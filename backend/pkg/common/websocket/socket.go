@@ -33,23 +33,36 @@ func (ws *Websocket) GetConnection(key string) (*Connection, bool) {
 }
 
 func (ws *Websocket) SendToAll(msgType, msg string) {
+	ws.Mutex.RLock()
+	conns := make([]*Connection, 0, len(ws.connections))
 	for _, conn := range ws.connections {
+		conns = append(conns, conn)
+	}
+	ws.Mutex.RUnlock()
+
+	for _, conn := range conns {
 		conn.Send(msgType, msg)
 	}
 }
 
 func (ws *Websocket) CloseConnection(key string) {
-	if _, ok := ws.connections[key]; !ok {
+	ws.Mutex.Lock()
+	conn, ok := ws.connections[key]
+	if ok {
+		delete(ws.connections, key)
+	}
+	ws.Mutex.Unlock()
+	if !ok {
 		return
 	}
-	if ws.connections[key].OnClose != nil {
-		ws.connections[key].OnClose()
+	if conn.OnClose != nil {
+		conn.OnClose()
 	}
-	ws.connections[key].closeChan <- true
-	ws.connections[key].conn.Close()
-	ws.Mutex.Lock()
-	delete(ws.connections, key)
-	ws.Mutex.Unlock()
+	select {
+	case conn.closeChan <- true:
+	default:
+	}
+	_ = conn.conn.Close()
 }
 
 var upgrader = ws.Upgrader{
@@ -71,17 +84,18 @@ func (ws *Websocket) Handler(w http.ResponseWriter, r *http.Request) {
 	// Create new connection
 	// Assign new key
 	k := generator.RandomSimpleString(18)
+	conn := newConnection(k, wsb, ws)
 	ws.Mutex.Lock()
-	ws.connections[k] = newConnection(k, wsb, ws)
+	ws.connections[k] = conn
 	ws.Mutex.Unlock()
-	ws.connections[k].startWriter()
-	ws.connections[k].conn.SetCloseHandler(func(code int, text string) error {
+	conn.startWriter()
+	conn.conn.SetCloseHandler(func(code int, text string) error {
 		ws.CloseConnection(k)
 		return nil
 	})
 
 	if ws.OnConnect != nil {
-		if err := ws.OnConnect(r, ws.connections[k]); err != nil {
+		if err := ws.OnConnect(r, conn); err != nil {
 			oapi.ServerError(w, err)
 			return
 		}
@@ -89,19 +103,24 @@ func (ws *Websocket) Handler(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		for {
-			if _, ok := ws.connections[k]; !ok {
+			ws.Mutex.RLock()
+			conn, ok := ws.connections[k]
+			ws.Mutex.RUnlock()
+			if !ok {
 				break
 			}
 
-			_, r, err := ws.connections[k].conn.NextReader()
+			_, r, err := conn.conn.NextReader()
 			if err != nil {
 				log.Println("websocket: reader:", err)
+				ws.CloseConnection(k)
 				break
 			}
 
 			bytes, err := io.ReadAll(r)
 			if err != nil {
 				log.Println("websocket:", err)
+				ws.CloseConnection(k)
 				break
 			}
 
@@ -112,15 +131,15 @@ func (ws *Websocket) Handler(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				if msg.Type == "PONG" {
-					ws.connections[k].isPonged = true
+					conn.isPonged = true
 					continue
 				}
-				if ws.connections[k].OnMessage != nil {
-					ws.connections[k].OnMessage(msg)
+				if conn.OnMessage != nil {
+					conn.OnMessage(msg)
 				}
 			} else {
-				if ws.connections[k].OnBytes != nil {
-					ws.connections[k].OnBytes(bytes)
+				if conn.OnBytes != nil {
+					conn.OnBytes(bytes)
 				}
 			}
 		}

@@ -151,7 +151,7 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				go processNote(savedNote)
+				go processNote(savedNote, loggedUser.ID)
 			}
 		} else {
 			note = &noteman.Note{
@@ -169,7 +169,7 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			go processNote(savedNote)
+			go processNote(savedNote, loggedUser.ID)
 		}
 	}
 

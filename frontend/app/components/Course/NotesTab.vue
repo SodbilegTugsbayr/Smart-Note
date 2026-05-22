@@ -9,6 +9,7 @@ const uploading = ref(false)
 const saving = ref(false)
 const progress = ref(0)
 const errorMessage = ref("")
+const progressByNoteId = ref({})
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
@@ -16,19 +17,117 @@ const activeNote = computed(() => {
 })
 const title = ref("")
 const content = ref("")
+const activeProgress = computed(() =>
+  activeNote.value ? progressByNoteId.value[activeNote.value.id] : null,
+)
+const isActiveNoteProcessing = computed(
+  () => activeNote.value?.process_status === "processing",
+)
+const isActiveProgressRunning = computed(
+  () => activeProgress.value && !["completed", "failed"].includes(activeProgress.value.stage),
+)
+const showProcessProgress = computed(
+  () => uploading.value || isActiveNoteProcessing.value || isActiveProgressRunning.value,
+)
+const displayProgress = computed(() => {
+  const value = activeProgress.value?.progress ?? (uploading.value ? progress.value : 25)
+  return Math.max(0, Math.min(100, Math.round(value)))
+})
+const displayProgressMessage = computed(() => {
+  if (activeProgress.value?.message) return activeProgress.value.message
+  if (uploading.value) return "Файл сервер рүү илгээж байна..."
+  return "Файлаас текст таньж байна..."
+})
 const canAttachFile = computed(
-  () => activeNote.value && !activeNote.value.is_from_book && !activeNote.value.has_file,
+  () =>
+    activeNote.value &&
+    !activeNote.value.is_from_book &&
+    !activeNote.value.has_file &&
+    activeNote.value.process_status !== "processing",
 )
 
 watch(
   activeNote,
-  (note) => {
+  (note, previousNote) => {
     title.value = note?.title || ""
     content.value = note?.summary || ""
-    errorMessage.value = ""
+    if (note?.id !== previousNote?.id) {
+      errorMessage.value = ""
+    }
   },
   { immediate: true },
 )
+
+useQueue((message) => {
+  if (!message || message.Type !== "NOTE_PROCESS_PROGRESS") return
+
+  let payload = message.Text
+  if (typeof payload === "string") {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      return
+    }
+  }
+
+  if (Number(payload?.course_id) !== Number(props.course.id)) return
+  if (!payload?.note_id) return
+
+  setNoteProgress(payload.note_id, {
+    stage: payload.stage,
+    progress: payload.progress,
+    message: payload.message,
+  })
+
+  if (payload.note) {
+    mergeNote(payload.note)
+  }
+
+  if (payload.stage === "failed") {
+    errorMessage.value = payload.message || "Файл боловсруулахад алдаа гарлаа"
+  }
+})
+
+function setNoteProgress(noteId, data) {
+  progressByNoteId.value = {
+    ...progressByNoteId.value,
+    [noteId]: {
+      ...(progressByNoteId.value[noteId] || {}),
+      ...data,
+    },
+  }
+}
+
+function clearNoteProgress(noteId) {
+  const next = { ...progressByNoteId.value }
+  delete next[noteId]
+  progressByNoteId.value = next
+}
+
+function mergeNote(updatedNote) {
+  if (!updatedNote?.id) return
+
+  let found = false
+  const notes = (props.course.notes || []).map((note) => {
+    if (note.id !== updatedNote.id) return note
+
+    found = true
+    return { ...note, ...updatedNote }
+  })
+  if (!found) {
+    notes.push(updatedNote)
+  }
+
+  emit("update", {
+    ...props.course,
+    notes,
+  })
+
+  if (activeNote.value?.id === updatedNote.id) {
+    title.value = updatedNote.title || ""
+    content.value = updatedNote.summary || ""
+  }
+}
 
 async function handleSave() {
   if (!activeNote.value) return
@@ -47,12 +146,7 @@ async function handleSave() {
     })
     title.value = savedNote.title || ""
     content.value = savedNote.summary || ""
-    emit("update", {
-      ...props.course,
-      notes: (props.course.notes || []).map((note) =>
-        note.id === savedNote.id ? savedNote : note,
-      ),
-    })
+    mergeNote(savedNote)
   } catch (err) {
     errorMessage.value = err?.data?.message || "Тэмдэглэл хадгалахад алдаа гарлаа"
   } finally {
@@ -77,32 +171,29 @@ function handleFileAttach() {
     formData.append("file", file)
 
     uploading.value = true
-    progress.value = 0
+    progress.value = 5
     errorMessage.value = ""
-    const interval = setInterval(() => {
-      progress.value = Math.min(progress.value + Math.random() * 12, 90)
-    }, 500)
+    setNoteProgress(targetNoteId, {
+      stage: "uploading",
+      progress: 5,
+      message: "Файл сервер рүү илгээж байна...",
+    })
 
     try {
       const savedNote = await $fetch(`/api/notes/${targetNoteId}/file`, {
         method: "POST",
         body: formData,
       })
-      clearInterval(interval)
-      progress.value = 100
-
-      if (activeNote.value?.id === savedNote.id) {
-        title.value = savedNote.title || ""
-        content.value = savedNote.summary || ""
-      }
-      emit("update", {
-        ...props.course,
-        notes: (props.course.notes || []).map((note) =>
-          note.id === savedNote.id ? savedNote : note,
-        ),
+      progress.value = 12
+      setNoteProgress(savedNote.id, {
+        stage: "started",
+        progress: 12,
+        message: "Файл хадгалагдлаа. AI боловсруулалт эхэллээ...",
       })
+
+      mergeNote(savedNote)
     } catch (err) {
-      clearInterval(interval)
+      clearNoteProgress(targetNoteId)
       errorMessage.value = err?.data?.message || "Файл боловсруулахад алдаа гарлаа"
     } finally {
       uploading.value = false
@@ -141,7 +232,7 @@ function noteStatusClass(note) {
           <button
             v-if="canAttachFile"
             @click="handleFileAttach"
-            :disabled="uploading"
+            :disabled="uploading || isActiveNoteProcessing"
             class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
           >
             <Loader2Icon v-if="uploading" class="w-4 h-4 animate-spin" />
@@ -150,7 +241,7 @@ function noteStatusClass(note) {
           </button>
           <button
             @click="handleSave"
-            :disabled="saving || uploading || !activeNote"
+            :disabled="saving || uploading || isActiveNoteProcessing || !activeNote"
             class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
           >
             <Loader2Icon v-if="saving" class="w-4 h-4 animate-spin" />
@@ -164,17 +255,15 @@ function noteStatusClass(note) {
     <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
     <!-- Progress bar -->
-    <div v-if="uploading" class="glass-card rounded-xl p-4 space-y-3">
+    <div v-if="showProcessProgress" class="glass-card rounded-xl p-4 space-y-3">
       <div class="flex items-center justify-between">
-        <span class="text-sm text-muted-foreground">
-          Файл уншиж, тэмдэглэл үүсгэж байна...
-        </span>
-        <span class="text-sm font-medium text-indigo-600">{{ Math.round(progress) }}%</span>
+        <span class="text-sm text-muted-foreground">{{ displayProgressMessage }}</span>
+        <span class="text-sm font-medium text-indigo-600">{{ displayProgress }}%</span>
       </div>
       <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
         <div
           class="h-full gradient-indigo rounded-full transition-all duration-500"
-          :style="{ width: `${progress}%` }"
+          :style="{ width: `${displayProgress}%` }"
         />
       </div>
     </div>

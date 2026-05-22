@@ -30,8 +30,8 @@ type Connection struct {
 func newConnection(key string, wsc *ws.Conn, websocket *Websocket) *Connection {
 	return &Connection{
 		conn:           wsc,
-		messageQueue:   make(chan Message),
-		closeChan:      make(chan bool),
+		messageQueue:   make(chan Message, 16),
+		closeChan:      make(chan bool, 1),
 		Key:            key,
 		Context:        context.Background(),
 		isPonged:       true,
@@ -40,7 +40,11 @@ func newConnection(key string, wsc *ws.Conn, websocket *Websocket) *Connection {
 }
 
 func (conn *Connection) Send(msgType, msg string) {
-	conn.messageQueue <- Message{Text: msg, Type: msgType}
+	select {
+	case conn.messageQueue <- Message{Text: msg, Type: msgType}:
+	case <-time.After(2 * time.Second):
+		log.Println("websocket: message send timeout")
+	}
 }
 
 // startWriter starts message writer from messageQueue AND starts pinger.
@@ -53,7 +57,9 @@ func (c *Connection) startWriter() {
 			case msg := <-c.messageQueue:
 				err := c.conn.WriteJSON(msg)
 				if err != nil {
-					log.Fatal(err)
+					log.Println("websocket: writer:", err)
+					c.connectionPool.CloseConnection(c.Key)
+					return
 				}
 			case <-c.closeChan:
 				finish = true

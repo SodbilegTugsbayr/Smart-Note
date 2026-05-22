@@ -189,6 +189,7 @@ func getAdminNotes(w http.ResponseWriter, r *http.Request) {
 
 func reprocessAdminNote(w http.ResponseWriter, r *http.Request) {
 	chosenNote := r.Context().Value(app.ContextKeyChosenNote).(*noteman.Note)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 	if !noteHasSourceFile(chosenNote) {
 		oapi.CustomError(w, http.StatusBadRequest, "Дахин боловсруулах эх файл алга")
 		return
@@ -203,7 +204,8 @@ func reprocessAdminNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go processNote(chosenNote)
+	noteToProcess := *chosenNote
+	go processNote(&noteToProcess, loggedUser.ID)
 
 	chosenNote.PrepareResponse()
 	oapi.SendResp(w, chosenNote)

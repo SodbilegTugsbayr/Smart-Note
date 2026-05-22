@@ -26,6 +26,15 @@ func SendResp(w http.ResponseWriter, Data interface{}) {
 	}
 }
 
+func SendRespStatus(w http.ResponseWriter, statusCode int, Data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	err := json.NewEncoder(w).Encode(Data)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
 func SendFormError(w http.ResponseWriter, Data interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)

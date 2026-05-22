@@ -201,9 +201,11 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	processNote(savedNote)
+	noteToProcess := *savedNote
+	go processNote(&noteToProcess, loggedUser.ID)
+
 	savedNote.PrepareResponse()
-	oapi.SendResp(w, savedNote)
+	oapi.SendRespStatus(w, http.StatusAccepted, savedNote)
 }
 
 func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {

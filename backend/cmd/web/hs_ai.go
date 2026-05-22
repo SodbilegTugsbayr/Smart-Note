@@ -10,6 +10,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 )
 
 type courseIDPayload struct {
@@ -39,10 +40,11 @@ func processCourseNotes(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
 	for _, note := range course.Notes {
 		if noteHasSourceFile(note) && (note.ProcessStatus != noteman.PROCESS_STATUS_COMPLETED || strings.TrimSpace(note.Summary) == "") {
-			processNote(note)
+			processNote(note, loggedUser.ID)
 		}
 	}
 
@@ -69,10 +71,11 @@ func generateCourseFlashcards(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
 
 	for _, note := range course.Notes {
 		if noteHasSourceFile(note) && len(note.FlashCards) == 0 {
-			processNote(note)
+			processNote(note, loggedUser.ID)
 		}
 	}
 
