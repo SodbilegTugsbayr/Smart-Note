@@ -81,7 +81,7 @@ func getSchema() openai.ChatCompletionNewParamsResponseFormatUnion {
 						},
 						"options": map[string]any{
 							"type":        "array",
-							"description": "Exactly 4 answer options (A, B, C, D)",
+							"description": "Exactly 4 answer option strings. One option must be the correct answer.",
 							"minItems":    4,
 							"maxItems":    4,
 							"items": map[string]any{
@@ -90,7 +90,7 @@ func getSchema() openai.ChatCompletionNewParamsResponseFormatUnion {
 						},
 						"correct_answer": map[string]any{
 							"type":        "string",
-							"description": "The correct answer, must exactly match one of the options",
+							"description": "The correct answer copied exactly from one of the options. Do not add explanation or alternative wording.",
 						},
 					},
 					"required":             []string{"question", "options", "correct_answer"},
@@ -129,6 +129,27 @@ func preparePrompt(rawContent string) string {
 3. **note.key_concepts** — Материалаас 5-10 чухал ойлголт, нэр томьёог тодорхойлолтын хамт гаргана уу
 4. **note.flash_cards** — Суралцагчид цээжлэхэд туслах 5-10 асуулт-хариулт карт үүсгэнэ үү
 5. **quizzes** — Материалын ойлголтыг шалгах 5-10 олон сонголттой тест асуулт бэлтгэнэ үү; дөрвөн хувилбар (options) өгч, correct_answer нь options-ийн аль нэгтэй яг таарах ёстой
+
+Тестийн хатуу дүрэм:
+- Quiz бүрийн **options** массив яг 4 ширхэг хариултын хувилбартай байна
+- Quiz бүрийн **correct_answer** нь **options** доторх нэг string-ийг үсэг, тэмдэгт, зай, нөхцөлөөр нь ЯГ ХУУЛСАН утга байна
+- **correct_answer** дээр options-д байхгүй дэлгэрэнгүй тайлбар, өөр найруулга, нэмэлт өгүүлбэр бичиж болохгүй
+- Хэрэв зөв хариулт дэлгэрэнгүй байх шаардлагатай бол тэр дэлгэрэнгүй өгүүлбэрийг options-ийн нэг хувилбар болгож оруулаад correct_answer-д яг тэр хувилбарыг хуулна
+- JSON гаргахаасаа өмнө quiz бүр дээр "correct_answer ∈ options" нөхцөлийг өөрөө шалгана
+
+Буруу жишээ:
+{
+  "question": "Шаардлагын хүчинтэй байдлыг шалгах гэдэг нь юуг илэрхийлдэг вэ?",
+  "options": ["Хэрэглэгчийн хүсэл", "Системийн зорилго", "Баримт бичгийн бүтэц", "Хэрэглэгчийн бодит хэрэгцээ"],
+  "correct_answer": "Хэрэглэгчийн бодит хэрэгцээг тусгасан эсэх"
+}
+
+Зөв жишээ:
+{
+  "question": "Шаардлагын хүчинтэй байдлыг шалгах гэдэг нь юуг илэрхийлдэг вэ?",
+  "options": ["Хэрэглэгчийн хүсэл", "Системийн зорилго", "Баримт бичгийн бүтэц", "Хэрэглэгчийн бодит хэрэгцээг тусгасан эсэх"],
+  "correct_answer": "Хэрэглэгчийн бодит хэрэгцээг тусгасан эсэх"
+}
 
 Заавар:
 - Бүх гарчиг, тайлбар, асуулт, хариултыг МОНГОЛ хэлээр бичнэ үү
