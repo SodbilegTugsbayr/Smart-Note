@@ -10,6 +10,9 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
+
+	"github.com/ledongthuc/pdf"
 )
 
 type OcrService struct {
@@ -30,11 +33,7 @@ func (s *OcrService) pushFile(filename string) (*OCRResult, error) {
 		return nil, err
 	}
 
-	sniffLen := 512
-	if len(data) < sniffLen {
-		sniffLen = len(data)
-	}
-	mimeType := http.DetectContentType(data[:sniffLen])
+	mimeType := detectContentType(data)
 
 	allowed := map[string]bool{
 		"image/jpeg":      true,
@@ -110,6 +109,18 @@ func (s *OcrService) getOutputText(uuid string) (*OCRTranscript, error) {
 }
 
 func (s *OcrService) GetTextFromFile(filename string) (string, error) {
+	mimeType, err := detectFileContentType(filename)
+	if err != nil {
+		return "", err
+	}
+
+	if mimeType == "application/pdf" {
+		text, ok, err := extractTextFromPDF(filename)
+		if err == nil && ok {
+			return text, nil
+		}
+	}
+
 	result, err := s.pushFile(filename)
 	if err != nil {
 		return "", err
@@ -139,4 +150,91 @@ func (s *OcrService) GetTextFromFile(filename string) (string, error) {
 			}
 		}
 	}
+}
+
+func detectFileContentType(filename string) (string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 512)
+	n, err := file.Read(buf)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+
+	return detectContentType(buf[:n]), nil
+}
+
+func detectContentType(data []byte) string {
+	sniffLen := 512
+	if len(data) < sniffLen {
+		sniffLen = len(data)
+	}
+	return http.DetectContentType(data[:sniffLen])
+}
+
+func extractTextFromPDF(filename string) (string, bool, error) {
+	file, reader, err := pdf.Open(filename)
+	if err != nil {
+		return "", false, err
+	}
+	defer file.Close()
+
+	plainText, err := reader.GetPlainText()
+	if err != nil {
+		return "", false, err
+	}
+
+	data, err := io.ReadAll(plainText)
+	if err != nil {
+		return "", false, err
+	}
+
+	text := cleanExtractedPDFText(string(data))
+	if !hasUsableText(text) {
+		return "", false, nil
+	}
+
+	return text, true, nil
+}
+
+func cleanExtractedPDFText(text string) string {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+
+	lines := strings.Split(text, "\n")
+	cleaned := make([]string, 0, len(lines))
+	previousBlank := false
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			if len(cleaned) > 0 && !previousBlank {
+				cleaned = append(cleaned, "")
+				previousBlank = true
+			}
+			continue
+		}
+
+		cleaned = append(cleaned, line)
+		previousBlank = false
+	}
+
+	return strings.TrimSpace(strings.Join(cleaned, "\n"))
+}
+
+func hasUsableText(text string) bool {
+	meaningfulRunes := 0
+	for _, r := range text {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			meaningfulRunes++
+			if meaningfulRunes >= 3 {
+				return true
+			}
+		}
+	}
+	return false
 }

@@ -7,6 +7,7 @@ require (
 	github.com/golangcollege/sessions v1.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/openai/openai-go/v3 v3.30.0
 	github.com/pdfcpu/pdfcpu v0.11.1
 	golang.org/x/crypto v0.43.0
