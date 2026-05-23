@@ -16,3 +16,13 @@ type Quiz struct {
 	Options       []string `json:"options" gorm:"serializer:json"`
 	CorrectAnswer string   `json:"correct_answer"`
 }
+
+type QuizResult struct {
+	entities.Model
+	UserID     int  `json:"user_id"`
+	NoteID     int  `json:"note_id"`
+	Score      int  `json:"score"`
+	Total      int  `json:"total"`
+	Percentage int  `json:"percentage"`
+	Passed     bool `json:"passed"`
+}

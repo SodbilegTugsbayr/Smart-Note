@@ -84,6 +84,7 @@ func routes() http.Handler {
 				r.Delete("/", deleteNote)
 				r.Post("/file", uploadNoteFile)
 				r.Get("/quizzes", getNoteQuizzes)
+				r.Post("/quizzes/submit", submitNoteQuiz)
 			})
 		})
 

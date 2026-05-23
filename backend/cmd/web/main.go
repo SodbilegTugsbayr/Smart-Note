@@ -30,6 +30,7 @@ func main() {
 		new(courseman.Course),
 		new(noteman.Note),
 		new(quizman.Quiz),
+		new(quizman.QuizResult),
 	))
 
 	addDefaultRecordsIfNotExist()

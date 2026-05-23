@@ -13,6 +13,10 @@ const answers = ref([])
 const quizDone = ref(false)
 const quizzes = ref([])
 const errorMessage = ref("")
+const submitting = ref(false)
+const regenerating = ref(false)
+const resultMessage = ref("")
+const passed = ref(false)
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
@@ -23,6 +27,9 @@ const score = computed(() => answers.value.filter((a) => a.correct).length)
 const pct = computed(() =>
   quizzes.value.length > 0 ? Math.round((score.value / quizzes.value.length) * 100) : 0,
 )
+const hasPassingScore = computed(
+  () => quizzes.value.length > 0 && score.value * 100 > 90 * quizzes.value.length,
+)
 
 watch(
   () => props.activeNoteId,
@@ -32,10 +39,47 @@ watch(
   { immediate: true },
 )
 
+useQueue((message) => {
+  if (!message || message.Type !== "NOTE_QUIZ_REGENERATION") return
+
+  let payload = message.Text
+  if (typeof payload === "string") {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      return
+    }
+  }
+
+  if (Number(payload?.course_id) !== Number(props.course.id)) return
+  if (Number(payload?.note_id) !== Number(activeNote.value?.id)) return
+
+  if (payload.stage === "started") {
+    regenerating.value = true
+    resultMessage.value = payload.message || "Тест дахин үүсгэж байна"
+    return
+  }
+
+  if (payload.stage === "completed") {
+    regenerating.value = false
+    quizzes.value = payload.quizzes || []
+    resetQuizState()
+    resultMessage.value = payload.message || "Шинэ тест бэлэн боллоо"
+    return
+  }
+
+  if (payload.stage === "failed") {
+    regenerating.value = false
+    errorMessage.value = payload.message || "Тест дахин үүсгэхэд алдаа гарлаа"
+  }
+})
+
 async function fetchQuizzes(noteId) {
   resetQuizState()
   quizzes.value = []
   errorMessage.value = ""
+  resultMessage.value = ""
+  regenerating.value = false
 
   if (!noteId) return
 
@@ -60,23 +104,24 @@ function handleAnswer(answer) {
   const isCorrect = answer === currentQuiz.value?.correct_answer
   selectedAnswer.value = answer
   showResult.value = true
-  answers.value.push({ quizId: currentQuiz.value?.id, correct: isCorrect })
+  answers.value.push({
+    quiz_id: currentQuiz.value?.id,
+    answer,
+    correct: isCorrect,
+  })
 }
 
 async function handleNext() {
+  if (submitting.value || regenerating.value) return
+
   if (currentQ.value < quizzes.value.length - 1) {
     currentQ.value++
     selectedAnswer.value = null
     showResult.value = false
   } else {
     quizDone.value = true
-    if (pct.value >= 90) {
-      await $fetch(`/api/courses/${props.course.id}`, {
-        method: "PATCH",
-        body: { status: "completed", progress: 100 },
-      })
-      emit("update", { ...props.course, status: "completed", progress: 100 })
-    }
+    passed.value = hasPassingScore.value
+    await submitQuizResult()
   }
 }
 
@@ -86,10 +131,76 @@ function resetQuizState() {
   showResult.value = false
   answers.value = []
   quizDone.value = false
+  passed.value = false
 }
 
 function resetQuiz() {
+  if (submitting.value || regenerating.value) return
   resetQuizState()
+  resultMessage.value = ""
+}
+
+async function submitQuizResult() {
+  if (!activeNote.value) return
+
+  submitting.value = true
+  errorMessage.value = ""
+  resultMessage.value = ""
+
+  try {
+    const result = await $fetch(`/api/notes/${activeNote.value.id}/quizzes/submit`, {
+      method: "POST",
+      body: {
+        answers: answers.value.map((answer) => ({
+          quiz_id: answer.quiz_id,
+          answer: answer.answer,
+        })),
+      },
+    })
+
+    passed.value = !!result?.passed
+    regenerating.value = !!result?.regenerating
+    resultMessage.value = result?.message || ""
+    mergeQuizSubmission(result)
+  } catch (err) {
+    errorMessage.value = err?.data?.message || "Тестийн үр дүн хадгалахад алдаа гарлаа"
+  } finally {
+    submitting.value = false
+  }
+}
+
+function mergeQuizSubmission(result) {
+  if (!result?.course && !result?.note) return
+
+  let nextCourse = props.course
+  if (result.course) {
+    nextCourse = {
+      ...nextCourse,
+      ...result.course,
+      notes: result.course.notes || nextCourse.notes,
+    }
+  }
+
+  if (result.note) {
+    let found = false
+    const notes = (nextCourse.notes || []).map((note) => {
+      if (Number(note.id) !== Number(result.note.id)) return note
+
+      found = true
+      return { ...note, ...result.note }
+    })
+
+    if (!found) {
+      notes.push(result.note)
+    }
+
+    nextCourse = {
+      ...nextCourse,
+      notes,
+    }
+  }
+
+  emit("update", nextCourse)
 }
 
 function optionClass(option) {
@@ -112,6 +223,7 @@ function optionClass(option) {
       <button
         v-if="quizDone && quizzes.length"
         @click="resetQuiz"
+        :disabled="submitting || regenerating"
         class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
       >
         <RotateCcwIcon class="w-4 h-4" /> Дахин эхлүүлэх
@@ -131,6 +243,13 @@ function optionClass(option) {
       <p class="text-red-600 text-sm">{{ errorMessage }}</p>
     </div>
 
+    <div v-else-if="regenerating && !quizDone" class="glass-card rounded-xl p-8 text-center">
+      <Loader2Icon class="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
+      <p class="text-muted-foreground text-sm">
+        {{ resultMessage || "Тест дахин үүсгэж байна" }}
+      </p>
+    </div>
+
     <div v-else-if="quizzes.length === 0" class="text-center py-12">
       <p class="text-muted-foreground text-sm">
         Тест байхгүй. Сонгосон тэмдэглэлийг боловсруулна уу.
@@ -138,7 +257,7 @@ function optionClass(option) {
     </div>
 
     <div v-else-if="quizDone" class="glass-card rounded-xl p-8 text-center">
-      <template v-if="pct >= 90">
+      <template v-if="passed">
         <div
           class="w-20 h-20 rounded-full gradient-teal flex items-center justify-center mx-auto mb-4"
         >
@@ -148,7 +267,9 @@ function optionClass(option) {
         <p class="text-teal-700 text-lg font-medium">
           {{ score }}/{{ quizzes.length }} ({{ pct }}%)
         </p>
-        <p class="text-muted-foreground text-sm mt-2">Та энэ хичээлийг амжилттай дууслаа!</p>
+        <p class="text-muted-foreground text-sm mt-2">
+          {{ resultMessage || "Та энэ тэмдэглэлийг амжилттай дууслаа!" }}
+        </p>
       </template>
       <template v-else>
         <div
@@ -157,8 +278,20 @@ function optionClass(option) {
           <span class="text-3xl font-heading text-indigo-600">{{ pct }}%</span>
         </div>
         <h3 class="font-heading text-2xl text-foreground mb-2">Тестийн үр дүн</h3>
-        <p class="text-muted-foreground text-sm">
-          {{ score }}/{{ quizzes.length }} зөв хариулт. 90%-аас дээш авбал дуусгана.
+        <p class="text-muted-foreground text-sm mb-3">
+          {{ score }}/{{ quizzes.length }} зөв хариулт. 90%-аас их авбал дуусгана.
+        </p>
+        <div
+          v-if="submitting || regenerating"
+          class="flex items-center justify-center gap-2 text-sm text-indigo-700"
+        >
+          <Loader2Icon class="w-4 h-4 animate-spin" />
+          <span>
+            {{ submitting ? "Үр дүн хадгалж байна" : resultMessage || "Тест дахин үүсгэж байна" }}
+          </span>
+        </div>
+        <p v-else-if="resultMessage" class="text-sm text-muted-foreground">
+          {{ resultMessage }}
         </p>
       </template>
     </div>
@@ -206,9 +339,11 @@ function optionClass(option) {
         </div>
         <button
           @click="handleNext"
-          class="gradient-indigo text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+          :disabled="submitting || regenerating"
+          class="gradient-indigo text-white px-6 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center gap-2"
         >
-          {{ currentQ < quizzes.length - 1 ? "Дараагийнх →" : "Үр дүн харах →" }}
+          <Loader2Icon v-if="submitting" class="w-4 h-4 animate-spin" />
+          <span>{{ currentQ < quizzes.length - 1 ? "Дараагийнх →" : "Үр дүн харах →" }}</span>
         </button>
       </div>
     </div>

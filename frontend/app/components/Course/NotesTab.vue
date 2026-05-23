@@ -204,21 +204,25 @@ function handleFileAttach() {
 
 function noteStatusText(note) {
   if (!note) return ""
-  if (note.process_status === "completed") return "Дууссан"
   if (note.process_status === "processing") return "Боловсруулж байна"
   if (note.process_status === "failed") return "Алдаа"
+  if (note.status === "completed") return "Дууссан"
+  if (note.process_status === "completed") return "Тест хүлээгдэж байна"
   return "Ноорог"
 }
 
 function noteStatusClass(note) {
-  if (note?.process_status === "completed") {
-    return "bg-teal-500/10 text-teal-700 border border-teal-500/20"
+  if (note?.process_status === "processing") {
+    return "bg-indigo-500/10 text-indigo-700 border border-indigo-500/20"
   }
   if (note?.process_status === "failed") {
     return "bg-red-500/10 text-red-700 border border-red-500/20"
   }
-  if (note?.process_status === "processing") {
-    return "bg-indigo-500/10 text-indigo-700 border border-indigo-500/20"
+  if (note?.status === "completed") {
+    return "bg-teal-500/10 text-teal-700 border border-teal-500/20"
+  }
+  if (note?.process_status === "completed") {
+    return "bg-amber-500/10 text-amber-700 border border-amber-500/20"
   }
   return "bg-slate-100 text-slate-600 border border-slate-200"
 }

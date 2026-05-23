@@ -147,6 +147,13 @@ func (s *Service) Save(data *Quiz) (*Quiz, error) {
 	return data, nil
 }
 
+func (s *Service) SaveResult(data *QuizResult) (*QuizResult, error) {
+	if err := s.db.Save(data).Error; err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 func (s *Service) Delete(id int) error {
 	return s.db.Delete(new(Quiz), id).Error
 }

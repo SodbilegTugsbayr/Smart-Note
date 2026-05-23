@@ -8,10 +8,13 @@ import (
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
+	"gorm.io/gorm"
 )
 
 const noteProcessProgressMessageType = "NOTE_PROCESS_PROGRESS"
+const noteQuizRegenerationMessageType = "NOTE_QUIZ_REGENERATION"
 
 type noteProcessProgressPayload struct {
 	CourseID      int           `json:"course_id"`
@@ -22,6 +25,15 @@ type noteProcessProgressPayload struct {
 	ProcessStatus string        `json:"process_status"`
 	Error         string        `json:"error,omitempty"`
 	Note          *noteman.Note `json:"note,omitempty"`
+}
+
+type noteQuizRegenerationPayload struct {
+	CourseID int            `json:"course_id"`
+	NoteID   int            `json:"note_id"`
+	Stage    string         `json:"stage"`
+	Message  string         `json:"message"`
+	Error    string         `json:"error,omitempty"`
+	Quizzes  []quizman.Quiz `json:"quizzes,omitempty"`
 }
 
 func processNote(note *noteman.Note, recipientUserIDs ...int) {
@@ -86,7 +98,9 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) {
 	note.KeyConcepts = output.Note.KeyConcepts
 	note.FlashCards = output.Note.FlashCards
 	note.ProcessStatus = noteman.PROCESS_STATUS_COMPLETED
-	note.Status = noteman.STATUS_COMPLETED
+	if strings.TrimSpace(note.Status) == "" {
+		note.Status = noteman.STATUS_IN_PROGRESS
+	}
 
 	if _, err := app.Notes.Save(note); err != nil {
 		app.ErrorLog.Println("failed to save note: ", err)
@@ -95,6 +109,63 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) {
 	}
 
 	publishNoteProcessProgress(note, recipientUserIDs, "completed", 100, "Тэмдэглэл бэлэн боллоо", "", true)
+}
+
+func regenerateNoteQuizzes(note *noteman.Note, recipientUserIDs ...int) {
+	if note == nil {
+		return
+	}
+
+	publishNoteQuizRegeneration(note, recipientUserIDs, "started", "Тест дахин үүсгэж байна", "", nil)
+
+	content := strings.TrimSpace(note.RawContent)
+	if content == "" {
+		content = strings.TrimSpace(note.Summary)
+	}
+	if content == "" {
+		err := fmt.Errorf("note has no content for quiz regeneration")
+		app.ErrorLog.Println(err)
+		publishNoteQuizRegeneration(note, recipientUserIDs, "failed", "Тест дахин үүсгэх агуулга олдсонгүй", err.Error(), nil)
+		return
+	}
+
+	output, err := app.EguneService.GenerateNote(content)
+	if err != nil {
+		app.ErrorLog.Println("failed to regenerate quizzes: ", err)
+		publishNoteQuizRegeneration(note, recipientUserIDs, "failed", "Тест дахин үүсгэхэд алдаа гарлаа", err.Error(), nil)
+		return
+	}
+
+	generatedQuizzes := output.Quizzes
+	if len(generatedQuizzes) == 0 {
+		err := fmt.Errorf("quiz regeneration returned no quizzes")
+		app.ErrorLog.Println(err)
+		publishNoteQuizRegeneration(note, recipientUserIDs, "failed", "Шинэ тестийн асуулт үүссэнгүй", err.Error(), nil)
+		return
+	}
+
+	savedQuizzes := make([]quizman.Quiz, 0, len(generatedQuizzes))
+	if err := app.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("note_id = ?", note.ID).Delete(&quizman.Quiz{}).Error; err != nil {
+			return err
+		}
+
+		for i := range generatedQuizzes {
+			generatedQuizzes[i].NoteID = note.ID
+			if err := tx.Save(&generatedQuizzes[i]).Error; err != nil {
+				return err
+			}
+			savedQuizzes = append(savedQuizzes, generatedQuizzes[i])
+		}
+
+		return nil
+	}); err != nil {
+		app.ErrorLog.Println("failed to replace regenerated quizzes: ", err)
+		publishNoteQuizRegeneration(note, recipientUserIDs, "failed", "Шинэ тест хадгалахад алдаа гарлаа", err.Error(), nil)
+		return
+	}
+
+	publishNoteQuizRegeneration(note, recipientUserIDs, "completed", "Шинэ тест бэлэн боллоо", "", savedQuizzes)
 }
 
 func markNoteProcessingFailed(note *noteman.Note, recipientUserIDs []int, message string, cause error) {
@@ -137,6 +208,31 @@ func publishNoteProcessProgress(note *noteman.Note, recipientUserIDs []int, stag
 
 	for _, userID := range noteProcessRecipientIDs(note, recipientUserIDs) {
 		sendUserSocketMessage(userID, noteProcessProgressMessageType, string(data))
+	}
+}
+
+func publishNoteQuizRegeneration(note *noteman.Note, recipientUserIDs []int, stage, message, errMessage string, quizzes []quizman.Quiz) {
+	if note == nil {
+		return
+	}
+
+	payload := noteQuizRegenerationPayload{
+		CourseID: note.CourseID,
+		NoteID:   note.ID,
+		Stage:    stage,
+		Message:  message,
+		Error:    errMessage,
+		Quizzes:  quizzes,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		app.ErrorLog.Println("failed to marshal quiz regeneration progress: ", err)
+		return
+	}
+
+	for _, userID := range noteProcessRecipientIDs(note, recipientUserIDs) {
+		sendUserSocketMessage(userID, noteQuizRegenerationMessageType, string(data))
 	}
 }
 
