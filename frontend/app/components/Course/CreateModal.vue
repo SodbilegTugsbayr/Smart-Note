@@ -298,7 +298,7 @@ const isSubmitDisabled = computed(
           <div class="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center">
             <UploadIcon class="w-6 h-6" />
           </div>
-          <span class="text-sm font-medium text-foreground">PDF / Зураг оруулах</span>
+          <span class="text-sm font-medium text-foreground">Ном оруулах</span>
         </button>
       </div>
 
