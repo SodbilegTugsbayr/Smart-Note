@@ -256,20 +256,6 @@ function noteStatusClass(note) {
 
     <p v-if="errorMessage" class="text-sm text-red-600">{{ errorMessage }}</p>
 
-    <!-- Progress bar -->
-    <div v-if="showProcessProgress" class="glass-card rounded-xl p-4 space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-muted-foreground">{{ displayProgressMessage }}</span>
-        <span class="text-sm font-medium text-indigo-600">{{ displayProgress }}%</span>
-      </div>
-      <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-        <div
-          class="h-full gradient-indigo rounded-full transition-all duration-500"
-          :style="{ width: `${displayProgress}%` }"
-        />
-      </div>
-    </div>
-
     <!-- Selected note content -->
     <div v-if="activeNote" class="glass-card rounded-xl p-5 space-y-4">
       <div class="flex items-start justify-between gap-2">
@@ -286,11 +272,38 @@ function noteStatusClass(note) {
         </span>
       </div>
 
-      <textarea
-        v-model="content"
-        placeholder="Тэмдэглэл бичих..."
-        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/20 min-h-[240px] resize-y"
-      />
+      <div class="relative">
+        <div
+          v-if="showProcessProgress"
+          class="rounded-lg border border-indigo-500/20 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur"
+          role="status"
+          aria-live="polite"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0 flex items-center gap-2">
+              <Loader2Icon class="h-4 w-4 flex-shrink-0 animate-spin text-indigo-600" />
+              <span class="truncate text-sm text-slate-700">{{ displayProgressMessage }}</span>
+            </div>
+            <span class="flex-shrink-0 text-sm font-medium text-indigo-600">
+              {{ displayProgress }}%
+            </span>
+          </div>
+          <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              class="h-full rounded-full gradient-indigo transition-all duration-500"
+              :style="{ width: `${displayProgress}%` }"
+            />
+          </div>
+        </div>
+        <textarea
+          v-else
+          v-model="content"
+          :readonly="showProcessProgress"
+          placeholder="Тэмдэглэл бичих..."
+          class="block w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/20 min-h-[240px] resize-y transition-colors"
+          :class="showProcessProgress ? 'pb-28 cursor-progress' : ''"
+        />
+      </div>
 
       <!-- Key concepts -->
       <div v-if="activeNote.key_concepts?.length" class="space-y-2">
