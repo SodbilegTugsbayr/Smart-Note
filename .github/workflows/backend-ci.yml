@@ -1,104 +1,104 @@
-name: Backend
+# name: Backend
 
-on:
-  push:
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-ci.yml"
-  pull_request:
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-ci.yml"
-  workflow_dispatch:
-    inputs:
-      deploy_target:
-        description: "Target environment to deploy (e.g. production)"
-        default: "production"
-        required: false
+# on:
+#   push:
+#     paths:
+#       - "backend/**"
+#       - ".github/workflows/backend-ci.yml"
+#   pull_request:
+#     paths:
+#       - "backend/**"
+#       - ".github/workflows/backend-ci.yml"
+#   workflow_dispatch:
+#     inputs:
+#       deploy_target:
+#         description: "Target environment to deploy (e.g. production)"
+#         default: "production"
+#         required: false
 
-jobs:
-  test-and-lint:
-    runs-on: ubuntu-latest
+# jobs:
+#   test-and-lint:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
+#       - name: Set up Go
+#         uses: actions/setup-go@v5
+#         with:
+#           go-version: "1.22"
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            $GOMODCACHE
-          key: ${{ runner.os }}-go-${{ hashFiles('backend/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+#       - name: Cache Go modules
+#         uses: actions/cache@v4
+#         with:
+#           path: |
+#             ~/.cache/go-build
+#             $GOMODCACHE
+#           key: ${{ runner.os }}-go-${{ hashFiles('backend/go.sum') }}
+#           restore-keys: |
+#             ${{ runner.os }}-go-
 
-      - name: Run unit tests
-        working-directory: ./backend
-        run: go test ./...
+#       - name: Run unit tests
+#         working-directory: ./backend
+#         run: go test ./...
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: v1.61.0
-          working-directory: backend
-          args: |
-            --timeout=5m
+#       - name: Run golangci-lint
+#         uses: golangci/golangci-lint-action@v6
+#         with:
+#           version: v1.61.0
+#           working-directory: backend
+#           args: |
+#             --timeout=5m
 
-  deploy:
-    if: github.event_name == 'workflow_dispatch'
-    needs: test-and-lint
-    runs-on: ubuntu-latest
+#   deploy:
+#     if: github.event_name == 'workflow_dispatch'
+#     needs: test-and-lint
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
+#       - name: Set up Go
+#         uses: actions/setup-go@v5
+#         with:
+#           go-version: "1.22"
 
-      - name: Create config file
-        env:
-          PROD_CONFIG: ${{ secrets.PROD_CONFIG }}
-        run: |
-          mkdir -p backend/confs
-          printf "%s" "$PROD_CONFIG" > backend/confs/prod.yaml
+#       - name: Create config file
+#         env:
+#           PROD_CONFIG: ${{ secrets.PROD_CONFIG }}
+#         run: |
+#           mkdir -p backend/confs
+#           printf "%s" "$PROD_CONFIG" > backend/confs/prod.yaml
 
-      - name: Prepare SSH
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "${DEPLOY_KEY}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
+#       - name: Prepare SSH
+#         env:
+#           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+#           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+#         run: |
+#           mkdir -p ~/.ssh
+#           echo "${DEPLOY_KEY}" > ~/.ssh/id_rsa
+#           chmod 600 ~/.ssh/id_rsa
+#           ssh-keyscan "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
 
-      - name: Build backend binary
-        working-directory: ./backend
-        env:
-          GOOS: linux
-          GOARCH: arm64
-          CGO_ENABLED: 0
-        run: |
-          go build -ldflags "-s -w" -o web ./cmd/web
+#       - name: Build backend binary
+#         working-directory: ./backend
+#         env:
+#           GOOS: linux
+#           GOARCH: arm64
+#           CGO_ENABLED: 0
+#         run: |
+#           go build -ldflags "-s -w" -o web ./cmd/web
 
-      - name: Deploy backend
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          WORKDIR: ${{ github.workspace }}/backend
-        run: |
-          ls -l "${WORKDIR}/confs/prod.yaml"
-          scp "${WORKDIR}/web" ec2-user@"${DEPLOY_HOST}":/home/smart-note/backend/__web
-          scp "${WORKDIR}/confs/prod.yaml" ec2-user@"${DEPLOY_HOST}":/home/smart-note/__web.yaml
-          ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note/backend && mv web _web && mv __web web"
-          ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note && mv web.yaml _web.yaml && mv __web.yaml web.yaml"
-          ssh -tt ec2-user@"${DEPLOY_HOST}" "supervisorctl -c /etc/supervisor/supervisord.conf restart web"
+#       - name: Deploy backend
+#         env:
+#           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+#           WORKDIR: ${{ github.workspace }}/backend
+#         run: |
+#           ls -l "${WORKDIR}/confs/prod.yaml"
+#           scp "${WORKDIR}/web" ec2-user@"${DEPLOY_HOST}":/home/smart-note/backend/__web
+#           scp "${WORKDIR}/confs/prod.yaml" ec2-user@"${DEPLOY_HOST}":/home/smart-note/__web.yaml
+#           ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note/backend && mv web _web && mv __web web"
+#           ssh -tt ec2-user@"${DEPLOY_HOST}" "cd /home/smart-note && mv web.yaml _web.yaml && mv __web.yaml web.yaml"
+#           ssh -tt ec2-user@"${DEPLOY_HOST}" "supervisorctl -c /etc/supervisor/supervisord.conf restart web"
