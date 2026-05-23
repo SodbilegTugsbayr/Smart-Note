@@ -116,10 +116,7 @@ function mergeNote(updatedNote) {
     notes.push(updatedNote)
   }
 
-  emit("update", {
-    ...props.course,
-    notes,
-  })
+  emit("update", useCourseWithSyncedProgress(props.course, notes))
 
   if (activeNote.value?.id === updatedNote.id) {
     title.value = updatedNote.title || ""

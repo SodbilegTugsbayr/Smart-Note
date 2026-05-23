@@ -45,26 +45,20 @@ function handleUpdate(updated) {
 }
 
 function handleNoteCreated(note) {
-  course.value = {
-    ...course.value,
-    notes: [...(course.value?.notes || []), note],
-  }
+  const nextNotes = [...(course.value?.notes || []), note]
+  course.value = useCourseWithSyncedProgress(course.value, nextNotes)
 }
 
 function handleNoteUpdated(updatedNote) {
-  course.value = {
-    ...course.value,
-    notes: (course.value?.notes || []).map((note) =>
-      note.id === updatedNote.id ? updatedNote : note,
-    ),
-  }
+  const nextNotes = (course.value?.notes || []).map((note) =>
+    note.id === updatedNote.id ? { ...note, ...updatedNote } : note,
+  )
+  course.value = useCourseWithSyncedProgress(course.value, nextNotes)
 }
 
 function handleNoteDeleted(noteId) {
-  course.value = {
-    ...course.value,
-    notes: (course.value?.notes || []).filter((note) => note.id !== noteId),
-  }
+  const nextNotes = (course.value?.notes || []).filter((note) => note.id !== noteId)
+  course.value = useCourseWithSyncedProgress(course.value, nextNotes)
 }
 
 function selectNote(id) {

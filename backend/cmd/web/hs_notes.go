@@ -84,6 +84,10 @@ func createCourseNote(w http.ResponseWriter, r *http.Request) {
 		oapi.ServerError(w, err)
 		return
 	}
+	if _, err := syncCourseProgress(chosenCourse.ID); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
 
 	savedNote.PrepareResponse()
 	oapi.SendResp(w, savedNote)
@@ -144,6 +148,10 @@ func deleteNote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := deleteNoteWithChildren(chosenNote); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+	if _, err := syncCourseProgress(chosenNote.CourseID); err != nil {
 		oapi.ServerError(w, err)
 		return
 	}
@@ -220,6 +228,10 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 	savedNote, err := app.Notes.Save(chosenNote)
 	if err != nil {
 		_ = os.RemoveAll(uploadDir)
+		oapi.ServerError(w, err)
+		return
+	}
+	if _, err := syncCourseProgress(chosenNote.CourseID); err != nil {
 		oapi.ServerError(w, err)
 		return
 	}
