@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/oapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
@@ -123,6 +124,10 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 		course.Sections = sections
 	}
 
+	for i := range course.Sections {
+		course.Sections[i].SectionName = common.CleanString(course.Sections[i].SectionName)
+
+	}
 	savedCourse, err := app.Courses.Save(course)
 	if err != nil {
 		_ = os.RemoveAll(courseDir)

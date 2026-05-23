@@ -15,3 +15,9 @@ func FormatAmount(f float32) string {
 	r = strings.ReplaceAll(r, ".", ",")
 	return r
 }
+
+func CleanString(s string) string {
+	s = strings.ReplaceAll(s, "\x00", "")
+	s = strings.TrimSpace(s)
+	return s
+}
