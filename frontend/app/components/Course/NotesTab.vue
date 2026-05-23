@@ -20,9 +20,7 @@ const content = ref("")
 const activeProgress = computed(() =>
   activeNote.value ? progressByNoteId.value[activeNote.value.id] : null,
 )
-const isActiveNoteProcessing = computed(
-  () => activeNote.value?.process_status === "processing",
-)
+const isActiveNoteProcessing = computed(() => activeNote.value?.process_status === "processing")
 const isActiveProgressRunning = computed(
   () => activeProgress.value && !["completed", "failed"].includes(activeProgress.value.stage),
 )
@@ -207,7 +205,7 @@ function noteStatusText(note) {
   if (note.process_status === "processing") return "Боловсруулж байна"
   if (note.process_status === "failed") return "Алдаа"
   if (note.status === "completed") return "Дууссан"
-  if (note.process_status === "completed") return "Тест хүлээгдэж байна"
+  if (note.process_status === "completed") return "Дуусаагүй"
   return "Ноорог"
 }
 
