@@ -52,6 +52,12 @@ func TestQuizServiceDatabaseCRUDFiltersAndResults(t *testing.T) {
 
 	assertQuizFilterCount(t, service, &quizman.Filter{NoteID: note.ID}, 2)
 	assertQuizFilterCount(t, service, &quizman.Filter{Keyword: "graph"}, 1)
+	if _, err := service.Get(&quizman.Quiz{Question: "Missing"}); !errors.Is(err, quizman.ErrNotFound) {
+		t.Fatalf("Get(missing) error = %v, want ErrNotFound", err)
+	}
+	if _, err := service.GetByID(999999); !errors.Is(err, quizman.ErrNotFound) {
+		t.Fatalf("GetByID(missing) error = %v, want ErrNotFound", err)
+	}
 
 	result, err := service.SaveResult(&quizman.QuizResult{
 		UserID:     7,

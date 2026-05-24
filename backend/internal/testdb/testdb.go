@@ -38,6 +38,12 @@ func Open(t testing.TB) *gorm.DB {
 	if err := sqlDB.Ping(); err != nil {
 		t.Fatalf("ping test database: %v", err)
 	}
+	sqlDB.SetMaxOpenConns(1)
+	sqlDB.SetMaxIdleConns(1)
+
+	if err := db.Exec("SELECT pg_advisory_lock(20260524)").Error; err != nil {
+		t.Fatalf("lock test database: %v", err)
+	}
 
 	if err := db.AutoMigrate(
 		new(userman.User),
@@ -52,6 +58,9 @@ func Open(t testing.TB) *gorm.DB {
 	Reset(t, db)
 	t.Cleanup(func() {
 		Reset(t, db)
+		if err := db.Exec("SELECT pg_advisory_unlock(20260524)").Error; err != nil {
+			t.Fatalf("unlock test database: %v", err)
+		}
 		_ = sqlDB.Close()
 	})
 

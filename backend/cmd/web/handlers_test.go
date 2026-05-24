@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/internal/testdb"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/websocket"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/eguneapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/entities"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
@@ -204,11 +206,6 @@ func TestSignupLoginAndAdminStatsRoutesWithTestDB(t *testing.T) {
 	if user.PasswordHash == "" || user.PasswordHash == "StrongPass123!" {
 		t.Fatal("signup should store a non-plaintext password hash")
 	}
-	user.Role = userman.ROLE_ADMIN
-	if _, err := app.Users.Save(user); err != nil {
-		t.Fatalf("promote user: %v", err)
-	}
-
 	wrongLogin := doRequest(t, handler, http.MethodPost, "/pub/auth/login", map[string]string{
 		"email":    signedUp.Email,
 		"password": "wrong-password",
@@ -225,6 +222,11 @@ func TestSignupLoginAndAdminStatsRoutesWithTestDB(t *testing.T) {
 		t.Fatalf("correct login status = %d, body = %q, want 200", correctLogin.Code, correctLogin.Body.String())
 	}
 
+	user.Role = userman.ROLE_ADMIN
+	if _, err := app.Users.Save(user); err != nil {
+		t.Fatalf("promote user: %v", err)
+	}
+
 	allowed := doRequest(t, handler, http.MethodGet, "/api/admin/stats", nil, "", cookies)
 	if allowed.Code != http.StatusOK {
 		t.Fatalf("admin stats status = %d, body = %q, want 200", allowed.Code, allowed.Body.String())
@@ -236,6 +238,119 @@ func TestSignupLoginAndAdminStatsRoutesWithTestDB(t *testing.T) {
 	}
 	if _, ok := stats["totals"]; !ok {
 		t.Fatalf("admin stats missing totals: %+v", stats)
+	}
+}
+
+func TestMeUserCourseNoteAndAdminRoutesWithTestDB(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, signedUp := signupForHandlerTest(t, handler, "route-crud@example.com")
+
+	meResp := doRequest(t, handler, http.MethodGet, "/api/me", nil, "", cookies)
+	if meResp.Code != http.StatusOK {
+		t.Fatalf("me status = %d, body = %q, want 200", meResp.Code, meResp.Body.String())
+	}
+
+	updateMe := doRequest(t, handler, http.MethodPost, "/api/me", map[string]string{
+		"firstname":    "Updated",
+		"lastname":     "Tester",
+		"email":        signedUp.Email,
+		"phone_number": "99112233",
+	}, "application/json", cookies)
+	if updateMe.Code != http.StatusOK {
+		t.Fatalf("update me status = %d, body = %q, want 200", updateMe.Code, updateMe.Body.String())
+	}
+	var updatedUser userman.User
+	if err := json.NewDecoder(updateMe.Body).Decode(&updatedUser); err != nil {
+		t.Fatalf("decode updated user: %v", err)
+	}
+	if updatedUser.FirstName != "Updated" || updatedUser.PhoneNumber != "99112233" {
+		t.Fatalf("updated user = %+v, want updated name and phone", updatedUser)
+	}
+
+	course := createCourseForRouteTest(t, handler, cookies, "Databases", "SQL indexes")
+	listCourses := doRequest(t, handler, http.MethodGet, "/api/course/?keyword=Data&page=1&size=10", nil, "", cookies)
+	if listCourses.Code != http.StatusOK {
+		t.Fatalf("list courses status = %d, body = %q, want 200", listCourses.Code, listCourses.Body.String())
+	}
+	getCourseResp := doRequest(t, handler, http.MethodGet, fmt.Sprintf("/api/course/%d/", course.ID), nil, "", cookies)
+	if getCourseResp.Code != http.StatusOK {
+		t.Fatalf("get course status = %d, body = %q, want 200", getCourseResp.Code, getCourseResp.Body.String())
+	}
+
+	note := createNoteForRouteTest(t, handler, cookies, course.ID, "Indexes", "Initial summary")
+	updateNoteResp := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/notes/%d/", note.ID), map[string]string{
+		"title":   "Updated indexes",
+		"summary": "Updated summary",
+	}, "application/json", cookies)
+	if updateNoteResp.Code != http.StatusOK {
+		t.Fatalf("update note status = %d, body = %q, want 200", updateNoteResp.Code, updateNoteResp.Body.String())
+	}
+
+	user, err := app.Users.GetByID(signedUp.ID)
+	if err != nil {
+		t.Fatalf("GetByID(signedUp) error = %v", err)
+	}
+	user.Role = userman.ROLE_ADMIN
+	if _, err := app.Users.Save(user); err != nil {
+		t.Fatalf("promote user: %v", err)
+	}
+
+	adminCourses := doRequest(t, handler, http.MethodGet, "/api/admin/courses?keyword=Data&order_by=title&page=1&size=10", nil, "", cookies)
+	if adminCourses.Code != http.StatusOK {
+		t.Fatalf("admin courses status = %d, body = %q, want 200", adminCourses.Code, adminCourses.Body.String())
+	}
+	adminNotes := doRequest(t, handler, http.MethodGet, "/api/admin/notes?process_status=&order_by=created_at%20desc&page=1&size=10", nil, "", cookies)
+	if adminNotes.Code != http.StatusOK {
+		t.Fatalf("admin notes status = %d, body = %q, want 200", adminNotes.Code, adminNotes.Body.String())
+	}
+	usersList := doRequest(t, handler, http.MethodGet, "/api/users/?role=admin", nil, "", cookies)
+	if usersList.Code != http.StatusOK {
+		t.Fatalf("users list status = %d, body = %q, want 200", usersList.Code, usersList.Body.String())
+	}
+	getUserResp := doRequest(t, handler, http.MethodGet, fmt.Sprintf("/api/users/%d/", signedUp.ID), nil, "", cookies)
+	if getUserResp.Code != http.StatusOK {
+		t.Fatalf("get user status = %d, body = %q, want 200", getUserResp.Code, getUserResp.Body.String())
+	}
+	editUserResp := doRequest(t, handler, http.MethodPut, fmt.Sprintf("/api/users/%d/", signedUp.ID), map[string]string{
+		"firstname":    "Edited",
+		"lastname":     "Admin",
+		"email":        signedUp.Email,
+		"phone_number": "99887766",
+	}, "application/json", cookies)
+	if editUserResp.Code != http.StatusOK {
+		t.Fatalf("edit user status = %d, body = %q, want 200", editUserResp.Code, editUserResp.Body.String())
+	}
+	deleteNoteResp := doRequest(t, handler, http.MethodDelete, fmt.Sprintf("/api/notes/%d/", note.ID), nil, "", cookies)
+	if deleteNoteResp.Code != http.StatusOK {
+		t.Fatalf("delete note status = %d, body = %q, want 200", deleteNoteResp.Code, deleteNoteResp.Body.String())
+	}
+	deleteUserResp := doRequest(t, handler, http.MethodDelete, fmt.Sprintf("/api/users/%d/", signedUp.ID), nil, "", cookies)
+	if deleteUserResp.Code != http.StatusOK {
+		t.Fatalf("delete user status = %d, body = %q, want 200", deleteUserResp.Code, deleteUserResp.Body.String())
+	}
+}
+
+func TestMiddlewareRejectsUnauthenticatedAndUnverifiedUsersWithTestDB(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+
+	unauthenticated := doRequest(t, handler, http.MethodGet, "/api/me", nil, "", nil)
+	if unauthenticated.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated status = %d, want 401", unauthenticated.Code)
+	}
+
+	cookies, signedUp := signupForHandlerTest(t, handler, "unverified@example.com")
+	user, err := app.Users.GetByID(signedUp.ID)
+	if err != nil {
+		t.Fatalf("get signed-up user: %v", err)
+	}
+	user.IsVerified = false
+	if _, err := app.Users.Save(user); err != nil {
+		t.Fatalf("mark user unverified: %v", err)
+	}
+
+	resp := doRequest(t, handler, http.MethodGet, "/api/me", nil, "", cookies)
+	if resp.Code != http.StatusPreconditionFailed {
+		t.Fatalf("unverified status = %d, want 412", resp.Code)
 	}
 }
 
@@ -334,6 +449,116 @@ func TestCourseNoteQuizRoutesWithTestDB(t *testing.T) {
 	}
 	if result.Course == nil || result.Course.Progress != 100 || result.Course.Status != courseman.STATUS_COMPLETED {
 		t.Fatalf("updated course in result = %+v, want completed course", result.Course)
+	}
+}
+
+func TestAIFlashcardAndChatValidationRoutesWithTestDB(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, _ := signupForHandlerTest(t, handler, "route-ai@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "AI Course", "Generated content")
+	note := createNoteForRouteTest(t, handler, cookies, course.ID, "AI note", "Existing summary")
+
+	addFlashcardResp := doRequest(t, handler, http.MethodPost, "/api/flashcards", flashcardPayload{
+		CourseID:   course.ID,
+		NoteID:     note.ID,
+		Term:       "Vector",
+		Definition: "A numeric representation",
+	}, "application/json", cookies)
+	if addFlashcardResp.Code != http.StatusOK {
+		t.Fatalf("add flashcard status = %d, body = %q, want 200", addFlashcardResp.Code, addFlashcardResp.Body.String())
+	}
+
+	emptyChat := doRequest(t, handler, http.MethodPost, "/api/ai/chat", chatPayload{
+		CourseID: course.ID,
+		Question: "",
+	}, "application/json", cookies)
+	if emptyChat.Code != http.StatusBadRequest {
+		t.Fatalf("empty chat status = %d, want 400", emptyChat.Code)
+	}
+
+	emptyCourse := createCourseForRouteTest(t, handler, cookies, "Empty", "No notes")
+	noContextChat := doRequest(t, handler, http.MethodPost, "/api/ai/chat", chatPayload{
+		CourseID: emptyCourse.ID,
+		Question: "What is this?",
+	}, "application/json", cookies)
+	if noContextChat.Code != http.StatusBadRequest {
+		t.Fatalf("no-context chat status = %d, body = %q, want 400", noContextChat.Code, noContextChat.Body.String())
+	}
+}
+
+func TestProcessNoteAndRegenerateQuizzesWithFakesAndTestDB(t *testing.T) {
+	setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw OCR text"}
+	app.EguneService = fakeEguneClient{
+		output: &eguneapi.GeneratedOutput{
+			Note: noteman.Note{
+				Title:   "Generated title",
+				Summary: "Generated summary",
+				KeyConcepts: []*noteman.KeyConcept{
+					{Concept: "Concept", Definition: "Definition"},
+				},
+				FlashCards: []*noteman.FlashCard{
+					{Question: "Q", Answer: "A"},
+				},
+			},
+			Quizzes: []quizman.Quiz{
+				{Question: "Generated quiz?", Options: []string{"A", "B", "C", "D"}, CorrectAnswer: "A"},
+			},
+		},
+		answer: "chat answer",
+	}
+
+	user, course, note := createProcessingFixture(t, "/tmp/source.pdf")
+	processNote(note, user.ID)
+
+	savedNote, err := app.Notes.GetByID(note.ID)
+	if err != nil {
+		t.Fatalf("GetByID(processed note) error = %v", err)
+	}
+	if savedNote.ProcessStatus != noteman.PROCESS_STATUS_COMPLETED || savedNote.Summary != "Generated summary" || savedNote.RawContent != "raw OCR text" {
+		t.Fatalf("processed note = %+v, want completed generated note", savedNote)
+	}
+	quizzes, total, err := app.Quizzes.GetAll(&quizman.Filter{NoteID: note.ID}, 1, 25)
+	if err != nil {
+		t.Fatalf("GetAll(quizzes) error = %v", err)
+	}
+	if total != 1 || len(quizzes) != 1 || quizzes[0].NoteID != note.ID {
+		t.Fatalf("generated quizzes len=%d total=%d data=%+v, want one quiz for note", len(quizzes), total, quizzes)
+	}
+
+	if answer, err := app.EguneService.AnswerQuestion(buildCourseContext(&courseman.Course{Notes: []*noteman.Note{savedNote}}), "Question?"); err != nil || answer != "chat answer" {
+		t.Fatalf("fake AnswerQuestion() = (%q, %v), want chat answer", answer, err)
+	}
+
+	app.EguneService = fakeEguneClient{
+		output: &eguneapi.GeneratedOutput{
+			Note: noteman.Note{Title: "Regenerated"},
+			Quizzes: []quizman.Quiz{
+				{Question: "Replacement?", Options: []string{"A", "B", "C", "D"}, CorrectAnswer: "B"},
+			},
+		},
+	}
+	regenerateNoteQuizzes(savedNote, user.ID)
+	replaced, total, err := app.Quizzes.GetAll(&quizman.Filter{NoteID: savedNote.ID}, 1, 25)
+	if err != nil {
+		t.Fatalf("GetAll(regenerated quizzes) error = %v", err)
+	}
+	if total != 1 || replaced[0].Question != "Replacement?" {
+		t.Fatalf("regenerated quizzes len=%d data=%+v, want replacement quiz", total, replaced)
+	}
+
+	failedNote := &noteman.Note{CourseID: course.ID, Title: "Failure", FilePath: "/tmp/fail.pdf"}
+	if _, err := app.Notes.Save(failedNote); err != nil {
+		t.Fatalf("save failed note fixture: %v", err)
+	}
+	app.OCRService = fakeOCRClient{err: errors.New("ocr unavailable")}
+	processNote(failedNote, user.ID)
+	savedFailed, err := app.Notes.GetByID(failedNote.ID)
+	if err != nil {
+		t.Fatalf("GetByID(failed note) error = %v", err)
+	}
+	if savedFailed.ProcessStatus != noteman.PROCESS_STATUS_FAILED {
+		t.Fatalf("failed note status = %q, want failed", savedFailed.ProcessStatus)
 	}
 }
 
@@ -455,6 +680,78 @@ func signupForHandlerTest(t *testing.T, handler http.Handler, email string) ([]*
 	return rr.Result().Cookies(), &user
 }
 
+func createCourseForRouteTest(t *testing.T, handler http.Handler, cookies []*http.Cookie, title, description string) *courseman.Course {
+	t.Helper()
+
+	resp := doMultipartRequest(t, handler, http.MethodPost, "/api/course/", map[string]string{
+		"title":       title,
+		"description": description,
+	}, cookies)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("create course status = %d, body = %q, want 200", resp.Code, resp.Body.String())
+	}
+
+	var course courseman.Course
+	if err := json.NewDecoder(resp.Body).Decode(&course); err != nil {
+		t.Fatalf("decode course: %v", err)
+	}
+	return &course
+}
+
+func createNoteForRouteTest(t *testing.T, handler http.Handler, cookies []*http.Cookie, courseID int, title, summary string) *noteman.Note {
+	t.Helper()
+
+	resp := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/course/%d/notes", courseID), map[string]string{
+		"title":   title,
+		"summary": summary,
+	}, "application/json", cookies)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("create note status = %d, body = %q, want 200", resp.Code, resp.Body.String())
+	}
+
+	var note noteman.Note
+	if err := json.NewDecoder(resp.Body).Decode(&note); err != nil {
+		t.Fatalf("decode note: %v", err)
+	}
+	return &note
+}
+
+func createProcessingFixture(t *testing.T, filePath string) (*userman.User, *courseman.Course, *noteman.Note) {
+	t.Helper()
+
+	user, err := app.Users.Save(&userman.User{
+		FirstName:  "Processor",
+		LastName:   "Tester",
+		Email:      fmt.Sprintf("processor-%d@example.com", time.Now().UnixNano()),
+		AuthType:   userman.AUTH_TYPE_BASIC,
+		Role:       userman.ROLE_USER,
+		IsVerified: true,
+	})
+	if err != nil {
+		t.Fatalf("save processing user: %v", err)
+	}
+	course, err := app.Courses.Save(&courseman.Course{
+		UserID:      user.ID,
+		Title:       "Processing course",
+		Description: "Processing course",
+		Status:      courseman.STATUS_IN_PROGRESS,
+	})
+	if err != nil {
+		t.Fatalf("save processing course: %v", err)
+	}
+	note, err := app.Notes.Save(&noteman.Note{
+		CourseID:      course.ID,
+		Title:         "Processing note",
+		FilePath:      filePath,
+		Status:        noteman.STATUS_IN_PROGRESS,
+		ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
+	})
+	if err != nil {
+		t.Fatalf("save processing note: %v", err)
+	}
+	return user, course, note
+}
+
 func doRequest(t *testing.T, handler http.Handler, method, path string, payload interface{}, contentType string, cookies []*http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 
@@ -476,6 +773,38 @@ func doRequest(t *testing.T, handler http.Handler, method, path string, payload 
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	return rr
+}
+
+type fakeOCRClient struct {
+	text string
+	err  error
+}
+
+func (f fakeOCRClient) GetTextFromFile(filename string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.text, nil
+}
+
+type fakeEguneClient struct {
+	output *eguneapi.GeneratedOutput
+	answer string
+	err    error
+}
+
+func (f fakeEguneClient) GenerateNote(rawContent string) (*eguneapi.GeneratedOutput, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.output, nil
+}
+
+func (f fakeEguneClient) AnswerQuestion(courseContext, question string) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	return f.answer, nil
 }
 
 func doMultipartRequest(t *testing.T, handler http.Handler, method, path string, fields map[string]string, cookies []*http.Cookie) *httptest.ResponseRecorder {

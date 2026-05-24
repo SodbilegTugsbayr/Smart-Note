@@ -39,9 +39,18 @@ var (
 	Courses *courseman.Service
 
 	//AIService
-	EguneService *eguneapi.EguneService
-	OCRService   *ocrapi.OcrService
+	EguneService EguneClient
+	OCRService   OCRClient
 )
+
+type EguneClient interface {
+	GenerateNote(rawContent string) (*eguneapi.GeneratedOutput, error)
+	AnswerQuestion(courseContext, question string) (string, error)
+}
+
+type OCRClient interface {
+	GetTextFromFile(filename string) (string, error)
+}
 
 func Init(path string) {
 	InfoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)

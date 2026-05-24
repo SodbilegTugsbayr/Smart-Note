@@ -60,6 +60,12 @@ func TestCourseServiceDatabaseCRUDFiltersAndPreloads(t *testing.T) {
 	if len(withNotes.Sections) != 1 || withNotes.Sections[0].SectionName != "Sorting" {
 		t.Fatalf("GetByID().Sections = %+v, want Sorting section", withNotes.Sections)
 	}
+	if _, err := service.Get(&courseman.Course{Title: "Missing"}); !errors.Is(err, courseman.ErrNotFound) {
+		t.Fatalf("Get(missing) error = %v, want ErrNotFound", err)
+	}
+	if _, err := service.GetByID(999999); !errors.Is(err, courseman.ErrNotFound) {
+		t.Fatalf("GetByID(missing) error = %v, want ErrNotFound", err)
+	}
 
 	if err := service.Delete(first.ID); err != nil {
 		t.Fatalf("Delete() error = %v", err)

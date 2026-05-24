@@ -50,6 +50,12 @@ func TestNoteServiceDatabaseCRUDAndFilters(t *testing.T) {
 	assertNoteFilterCount(t, service, &noteman.Filter{CourseID: course.ID}, 2)
 	assertNoteFilterCount(t, service, &noteman.Filter{Keyword: "Quick"}, 1)
 	assertNoteFilterCount(t, service, &noteman.Filter{ProcessStatus: noteman.PROCESS_STATUS_PROCESSING}, 1)
+	if _, err := service.Get(&noteman.Note{Title: "Missing"}); !errors.Is(err, noteman.ErrNotFound) {
+		t.Fatalf("Get(missing) error = %v, want ErrNotFound", err)
+	}
+	if _, err := service.GetByID(999999); !errors.Is(err, noteman.ErrNotFound) {
+		t.Fatalf("GetByID(missing) error = %v, want ErrNotFound", err)
+	}
 
 	if err := service.Delete(first.ID); err != nil {
 		t.Fatalf("Delete() error = %v", err)

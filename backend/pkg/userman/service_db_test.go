@@ -53,6 +53,12 @@ func TestUserServiceDatabaseCRUDAndFilters(t *testing.T) {
 	if _, err := service.GetWithAuthTypes(&userman.User{Email: alice.Email}, []string{"external"}); !errors.Is(err, userman.ErrNotFound) {
 		t.Fatalf("GetWithAuthTypes() error = %v, want ErrNotFound", err)
 	}
+	if _, err := service.Get(&userman.User{Email: "missing@example.com"}); !errors.Is(err, userman.ErrNotFound) {
+		t.Fatalf("Get(missing) error = %v, want ErrNotFound", err)
+	}
+	if _, err := service.GetByID(999999); !errors.Is(err, userman.ErrNotFound) {
+		t.Fatalf("GetByID(missing) error = %v, want ErrNotFound", err)
+	}
 
 	total, err := service.Count(nil)
 	if err != nil {
@@ -66,6 +72,15 @@ func TestUserServiceDatabaseCRUDAndFilters(t *testing.T) {
 	assertUserFilterCount(t, service, &userman.Filter{Role: userman.ROLE_ADMIN}, 1)
 	assertUserFilterCount(t, service, &userman.Filter{Email: "alice@"}, 1)
 	assertUserFilterCount(t, service, &userman.Filter{Emails: []string{alice.Email, bob.Email}}, 2)
+	assertUserFilterCount(t, service, &userman.Filter{IDs: []int{bob.ID}}, 1)
+
+	users, total, err := service.GetAll(nil, 2, 1)
+	if err != nil {
+		t.Fatalf("GetAll(page 2) error = %v", err)
+	}
+	if total != 2 || len(users) != 1 {
+		t.Fatalf("GetAll(page 2) returned len=%d total=%d, want one user on second page", len(users), total)
+	}
 
 	if err := service.Delete(alice.ID); err != nil {
 		t.Fatalf("Delete() error = %v", err)
