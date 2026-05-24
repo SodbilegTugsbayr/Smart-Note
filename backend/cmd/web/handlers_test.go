@@ -807,6 +807,38 @@ func (f fakeEguneClient) AnswerQuestion(courseContext, question string) (string,
 	return f.answer, nil
 }
 
+func doMultipartFileRequest(t *testing.T, handler http.Handler, method, path, fieldName, filename string, fileData []byte, fields map[string]string, cookies []*http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for key, value := range fields {
+		if err := writer.WriteField(key, value); err != nil {
+			t.Fatalf("WriteField(%s) error = %v", key, err)
+		}
+	}
+	part, err := writer.CreateFormFile(fieldName, filename)
+	if err != nil {
+		t.Fatalf("CreateFormFile() error = %v", err)
+	}
+	if _, err := part.Write(fileData); err != nil {
+		t.Fatalf("part.Write() error = %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("writer.Close() error = %v", err)
+	}
+
+	req := httptest.NewRequest(method, path, &body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	return rr
+}
+
 func doMultipartRequest(t *testing.T, handler http.Handler, method, path string, fields map[string]string, cookies []*http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 
@@ -830,4 +862,647 @@ func doMultipartRequest(t *testing.T, handler http.Handler, method, path string,
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	return rr
+}
+
+func TestPingAndLogoutRoutes(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+
+	pingResp := doRequest(t, handler, http.MethodGet, "/ping", nil, "", nil)
+	if pingResp.Code != http.StatusOK {
+		t.Fatalf("ping status = %d, want 200", pingResp.Code)
+	}
+	if !strings.Contains(pingResp.Body.String(), "OK") {
+		t.Fatalf("ping body = %q, want OK", pingResp.Body.String())
+	}
+
+	cookies, _ := signupForHandlerTest(t, handler, "logout-user@example.com")
+	logoutResp := doRequest(t, handler, http.MethodPost, "/api/logout", nil, "", cookies)
+	if logoutResp.Code != http.StatusOK {
+		t.Fatalf("logout status = %d, body = %q, want 200", logoutResp.Code, logoutResp.Body.String())
+	}
+}
+
+func TestUploadFileRoute(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, _ := signupForHandlerTest(t, handler, "upload-user@example.com")
+
+	missing := doMultipartRequest(t, handler, http.MethodPost, "/api/upload", map[string]string{"_": "x"}, cookies)
+	if missing.Code != http.StatusBadRequest {
+		t.Fatalf("missing file status = %d, body = %q, want 400", missing.Code, missing.Body.String())
+	}
+
+	resp := doMultipartFileRequest(t, handler, http.MethodPost, "/api/upload", "file", "pic.png", minimalPNG(), nil, cookies)
+	if resp.Code != http.StatusOK {
+		t.Fatalf("upload status = %d, body = %q, want 200", resp.Code, resp.Body.String())
+	}
+	var body map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode upload body: %v", err)
+	}
+	if !strings.HasPrefix(body["file_url"], "/pub/images/attachments/") || !strings.HasSuffix(body["file_url"], ".png") {
+		t.Fatalf("file_url = %q, want /pub/images/attachments/<uuid>/...png", body["file_url"])
+	}
+
+	reject := doMultipartFileRequest(t, handler, http.MethodPost, "/api/upload", "file", "note.txt", []byte("just text content"), nil, cookies)
+	if reject.Code != http.StatusBadRequest {
+		t.Fatalf("unsupported file status = %d, want 400", reject.Code)
+	}
+}
+
+func TestDeleteCourseRoute(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	ownerCookies, _ := signupForHandlerTest(t, handler, "course-owner@example.com")
+	intruderCookies, _ := signupForHandlerTest(t, handler, "course-intruder@example.com")
+
+	course := createCourseForRouteTest(t, handler, ownerCookies, "ToDelete", "Removable")
+
+	forbidden := doRequest(t, handler, http.MethodDelete, fmt.Sprintf("/api/course/%d/", course.ID), nil, "", intruderCookies)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("intruder delete status = %d, want 403", forbidden.Code)
+	}
+
+	deleted := doRequest(t, handler, http.MethodDelete, fmt.Sprintf("/api/course/%d/", course.ID), nil, "", ownerCookies)
+	if deleted.Code != http.StatusOK {
+		t.Fatalf("owner delete status = %d, body = %q, want 200", deleted.Code, deleted.Body.String())
+	}
+	if _, err := app.Courses.GetByID(course.ID); err == nil {
+		t.Fatal("course still retrievable after delete")
+	}
+}
+
+func TestUploadNoteFileRoute(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw OCR text"}
+	app.EguneService = fakeEguneClient{output: &eguneapi.GeneratedOutput{
+		Note: noteman.Note{Title: "Generated", Summary: "Summary"},
+	}}
+
+	cookies, _ := signupForHandlerTest(t, handler, "note-upload@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "Bio", "Biology")
+	note := createNoteForRouteTest(t, handler, cookies, course.ID, "Cells", "Initial")
+
+	resp := doMultipartFileRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/file", note.ID), "file", "cells.png", minimalPNG(), nil, cookies)
+	if resp.Code != http.StatusAccepted {
+		t.Fatalf("upload note file status = %d, body = %q, want 202", resp.Code, resp.Body.String())
+	}
+
+	again := doMultipartFileRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/file", note.ID), "file", "more.png", minimalPNG(), nil, cookies)
+	if again.Code != http.StatusBadRequest {
+		t.Fatalf("re-upload status = %d, want 400 (already has file)", again.Code)
+	}
+}
+
+func TestReprocessAdminNoteRoute(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw"}
+	app.EguneService = fakeEguneClient{output: &eguneapi.GeneratedOutput{
+		Note: noteman.Note{Title: "Re", Summary: "Re-summary"},
+	}}
+
+	cookies, signedUp := signupForHandlerTest(t, handler, "reprocess-admin@example.com")
+	user, err := app.Users.GetByID(signedUp.ID)
+	if err != nil {
+		t.Fatalf("get signed user: %v", err)
+	}
+	user.Role = userman.ROLE_ADMIN
+	if _, err := app.Users.Save(user); err != nil {
+		t.Fatalf("promote admin: %v", err)
+	}
+
+	tmp, err := os.CreateTemp(t.TempDir(), "src-*.pdf")
+	if err != nil {
+		t.Fatalf("create tmp file: %v", err)
+	}
+	_ = tmp.Close()
+
+	course, err := app.Courses.Save(&courseman.Course{UserID: user.ID, Title: "Admin course"})
+	if err != nil {
+		t.Fatalf("save course: %v", err)
+	}
+	noteWithFile, err := app.Notes.Save(&noteman.Note{
+		CourseID:      course.ID,
+		Title:         "With file",
+		FilePath:      tmp.Name(),
+		ProcessStatus: noteman.PROCESS_STATUS_COMPLETED,
+		Summary:       "old summary",
+	})
+	if err != nil {
+		t.Fatalf("save note: %v", err)
+	}
+
+	reprocessResp := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/admin/notes/%d/reprocess", noteWithFile.ID), nil, "", cookies)
+	if reprocessResp.Code != http.StatusOK {
+		t.Fatalf("reprocess status = %d, body = %q, want 200", reprocessResp.Code, reprocessResp.Body.String())
+	}
+
+	noFileNote, err := app.Notes.Save(&noteman.Note{CourseID: course.ID, Title: "No file"})
+	if err != nil {
+		t.Fatalf("save no-file note: %v", err)
+	}
+	noFileResp := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/admin/notes/%d/reprocess", noFileNote.ID), nil, "", cookies)
+	if noFileResp.Code != http.StatusBadRequest {
+		t.Fatalf("reprocess(no file) status = %d, want 400", noFileResp.Code)
+	}
+
+	processingNote, err := app.Notes.Save(&noteman.Note{
+		CourseID:      course.ID,
+		Title:         "Processing",
+		FilePath:      tmp.Name(),
+		ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
+	})
+	if err != nil {
+		t.Fatalf("save processing note: %v", err)
+	}
+	busyResp := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/admin/notes/%d/reprocess", processingNote.ID), nil, "", cookies)
+	if busyResp.Code != http.StatusBadRequest {
+		t.Fatalf("reprocess(processing) status = %d, want 400", busyResp.Code)
+	}
+}
+
+func TestProcessCourseNotesAndGenerateFlashcardsRoutes(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw OCR"}
+	app.EguneService = fakeEguneClient{output: &eguneapi.GeneratedOutput{
+		Note: noteman.Note{Title: "Gen", Summary: "Generated summary"},
+		Quizzes: []quizman.Quiz{
+			{Question: "Q?", Options: []string{"A", "B"}, CorrectAnswer: "A"},
+		},
+	}}
+
+	cookies, _ := signupForHandlerTest(t, handler, "ai-batch@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "Batch", "Process all")
+
+	tmp, err := os.CreateTemp(t.TempDir(), "batch-*.pdf")
+	if err != nil {
+		t.Fatalf("create tmp: %v", err)
+	}
+	_ = tmp.Close()
+	if _, err := app.Notes.Save(&noteman.Note{CourseID: course.ID, Title: "Needs processing", FilePath: tmp.Name()}); err != nil {
+		t.Fatalf("save note: %v", err)
+	}
+
+	processResp := doRequest(t, handler, http.MethodPost, "/api/ai/process-notes", courseIDPayload{CourseID: course.ID}, "application/json", cookies)
+	if processResp.Code != http.StatusOK {
+		t.Fatalf("process-notes status = %d, body = %q, want 200", processResp.Code, processResp.Body.String())
+	}
+
+	flashResp := doRequest(t, handler, http.MethodPost, "/api/ai/generate-flashcards", courseIDPayload{CourseID: course.ID}, "application/json", cookies)
+	if flashResp.Code != http.StatusOK {
+		t.Fatalf("generate-flashcards status = %d, body = %q, want 200", flashResp.Code, flashResp.Body.String())
+	}
+
+	badJSON := doRequest(t, handler, http.MethodPost, "/api/ai/process-notes", "not-json", "application/json", cookies)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("bad-json process-notes status = %d, want 400", badJSON.Code)
+	}
+	notFound := doRequest(t, handler, http.MethodPost, "/api/ai/process-notes", courseIDPayload{CourseID: 999999}, "application/json", cookies)
+	if notFound.Code != http.StatusNotFound {
+		t.Fatalf("missing-course process-notes status = %d, want 404", notFound.Code)
+	}
+
+	badFlash := doRequest(t, handler, http.MethodPost, "/api/ai/generate-flashcards", "not-json", "application/json", cookies)
+	if badFlash.Code != http.StatusBadRequest {
+		t.Fatalf("bad-json generate-flashcards status = %d, want 400", badFlash.Code)
+	}
+}
+
+func TestSaveCourseValidationAndWithBookFile(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw"}
+	app.EguneService = fakeEguneClient{output: &eguneapi.GeneratedOutput{
+		Note: noteman.Note{Title: "Generated", Summary: "Gen"},
+	}}
+
+	cookies, _ := signupForHandlerTest(t, handler, "course-saver@example.com")
+
+	noTitle := doMultipartRequest(t, handler, http.MethodPost, "/api/course/", map[string]string{"description": "X"}, cookies)
+	if noTitle.Code != http.StatusBadRequest {
+		t.Fatalf("missing title status = %d, want 400", noTitle.Code)
+	}
+
+	noDesc := doMultipartRequest(t, handler, http.MethodPost, "/api/course/", map[string]string{"title": "X"}, cookies)
+	if noDesc.Code != http.StatusBadRequest {
+		t.Fatalf("missing description status = %d, want 400", noDesc.Code)
+	}
+
+	badFile := doMultipartFileRequest(t, handler, http.MethodPost, "/api/course/", "file", "bad.txt", []byte("plain text"), map[string]string{
+		"title":       "With bad file",
+		"description": "Some description",
+	}, cookies)
+	if badFile.Code != http.StatusBadRequest {
+		t.Fatalf("unsupported file status = %d, want 400", badFile.Code)
+	}
+
+	withBook := doMultipartFileRequest(t, handler, http.MethodPost, "/api/course/", "file", "book.png", minimalPNG(), map[string]string{
+		"title":       "WithBook",
+		"description": "Has a book",
+		"icon":        "Book",
+		"sections":    `[{"section_name":"Intro","start_page":1,"end_page":5}]`,
+	}, cookies)
+	if withBook.Code != http.StatusOK {
+		t.Fatalf("with-book status = %d, body = %q, want 200", withBook.Code, withBook.Body.String())
+	}
+
+	badSections := doMultipartFileRequest(t, handler, http.MethodPost, "/api/course/", "file", "book.png", minimalPNG(), map[string]string{
+		"title":       "BadSections",
+		"description": "Sections malformed",
+		"sections":    "not-json",
+	}, cookies)
+	if badSections.Code != http.StatusBadRequest {
+		t.Fatalf("bad sections status = %d, want 400", badSections.Code)
+	}
+}
+
+func TestUpdateCourseAllFieldBranches(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, _ := signupForHandlerTest(t, handler, "course-updater@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "Original", "Original")
+
+	badJSON := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), "not-json", "application/json", cookies)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("bad json status = %d, want 400", badJSON.Code)
+	}
+
+	emptyTitle := ""
+	emptyTitleResp := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), updateCoursePayload{Title: &emptyTitle}, "application/json", cookies)
+	if emptyTitleResp.Code != http.StatusBadRequest {
+		t.Fatalf("empty title status = %d, want 400", emptyTitleResp.Code)
+	}
+
+	badStatus := "invalid"
+	badStatusResp := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), updateCoursePayload{Status: &badStatus}, "application/json", cookies)
+	if badStatusResp.Code != http.StatusBadRequest {
+		t.Fatalf("bad status status = %d, want 400", badStatusResp.Code)
+	}
+
+	newTitle := "Renamed"
+	newDesc := "New desc"
+	newStatus := courseman.STATUS_COMPLETED
+	overProgress := 150
+	isPublic := true
+	icon := "Star"
+	full := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), updateCoursePayload{
+		Title:       &newTitle,
+		Description: &newDesc,
+		Status:      &newStatus,
+		Progress:    &overProgress,
+		IsPublic:    &isPublic,
+		Icon:        &icon,
+	}, "application/json", cookies)
+	if full.Code != http.StatusOK {
+		t.Fatalf("full update status = %d, body = %q, want 200", full.Code, full.Body.String())
+	}
+
+	negProgress := -10
+	negResp := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), updateCoursePayload{Progress: &negProgress}, "application/json", cookies)
+	if negResp.Code != http.StatusOK {
+		t.Fatalf("negative progress status = %d, want 200 (clamped)", negResp.Code)
+	}
+
+	intruder, _ := signupForHandlerTest(t, handler, "course-intruder-update@example.com")
+	forbidden := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), updateCoursePayload{Title: &newTitle}, "application/json", intruder)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("intruder update status = %d, want 403", forbidden.Code)
+	}
+}
+
+func TestUpdateNoteValidation(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, _ := signupForHandlerTest(t, handler, "note-updater@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "Course", "Desc")
+	note := createNoteForRouteTest(t, handler, cookies, course.ID, "Original", "Initial summary")
+
+	badJSON := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/notes/%d/", note.ID), "not-json", "application/json", cookies)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("bad json status = %d, want 400", badJSON.Code)
+	}
+
+	emptyTitle := ""
+	emptyResp := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/notes/%d/", note.ID), updateNotePayload{Title: &emptyTitle}, "application/json", cookies)
+	if emptyResp.Code != http.StatusBadRequest {
+		t.Fatalf("empty title status = %d, want 400", emptyResp.Code)
+	}
+
+	intruder, _ := signupForHandlerTest(t, handler, "note-intruder-update@example.com")
+	newTitle := "Hijacked"
+	forbidden := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/notes/%d/", note.ID), updateNotePayload{Title: &newTitle}, "application/json", intruder)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("intruder update status = %d, want 403", forbidden.Code)
+	}
+
+	deleteIntruderResp := doRequest(t, handler, http.MethodDelete, fmt.Sprintf("/api/notes/%d/", note.ID), nil, "", intruder)
+	if deleteIntruderResp.Code != http.StatusForbidden {
+		t.Fatalf("intruder delete status = %d, want 403", deleteIntruderResp.Code)
+	}
+}
+
+func TestSubmitNoteQuizValidationAndScoring(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw"}
+	app.EguneService = fakeEguneClient{output: &eguneapi.GeneratedOutput{
+		Note: noteman.Note{Title: "Re", Summary: "Re"},
+		Quizzes: []quizman.Quiz{
+			{Question: "Replacement?", Options: []string{"A", "B"}, CorrectAnswer: "B"},
+		},
+	}}
+
+	cookies, _ := signupForHandlerTest(t, handler, "quiz-taker@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "Quizzy", "Quiz course")
+	note := createNoteForRouteTest(t, handler, cookies, course.ID, "Topic", "")
+
+	noQuizzes := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
+		Answers: []quizSubmissionAnswer{{QuizID: 1, Answer: "A"}},
+	}, "application/json", cookies)
+	if noQuizzes.Code != http.StatusBadRequest {
+		t.Fatalf("no-quizzes submit status = %d, want 400", noQuizzes.Code)
+	}
+
+	q1, err := app.Quizzes.Save(&quizman.Quiz{NoteID: note.ID, Question: "Q1", Options: []string{"A", "B"}, CorrectAnswer: "A"})
+	if err != nil {
+		t.Fatalf("save quiz q1: %v", err)
+	}
+	q2, err := app.Quizzes.Save(&quizman.Quiz{NoteID: note.ID, Question: "Q2", Options: []string{"A", "B"}, CorrectAnswer: "B"})
+	if err != nil {
+		t.Fatalf("save quiz q2: %v", err)
+	}
+
+	badJSON := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), "not-json", "application/json", cookies)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("bad json status = %d, want 400", badJSON.Code)
+	}
+
+	noAnswers := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{}, "application/json", cookies)
+	if noAnswers.Code != http.StatusBadRequest {
+		t.Fatalf("no answers status = %d, want 400", noAnswers.Code)
+	}
+
+	invalidID := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
+		Answers: []quizSubmissionAnswer{{QuizID: 0, Answer: "A"}},
+	}, "application/json", cookies)
+	if invalidID.Code != http.StatusBadRequest {
+		t.Fatalf("invalid quiz id status = %d, want 400", invalidID.Code)
+	}
+
+	wrongNote := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
+		Answers: []quizSubmissionAnswer{{QuizID: 999999, Answer: "A"}},
+	}, "application/json", cookies)
+	if wrongNote.Code != http.StatusBadRequest {
+		t.Fatalf("wrong-note quiz status = %d, want 400", wrongNote.Code)
+	}
+
+	pass := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
+		Answers: []quizSubmissionAnswer{{QuizID: q1.ID, Answer: "A"}, {QuizID: q2.ID, Answer: "B"}},
+	}, "application/json", cookies)
+	if pass.Code != http.StatusOK {
+		t.Fatalf("pass submit status = %d, body = %q, want 200", pass.Code, pass.Body.String())
+	}
+
+	getQuizzes := doRequest(t, handler, http.MethodGet, fmt.Sprintf("/api/notes/%d/quizzes", note.ID), nil, "", cookies)
+	if getQuizzes.Code != http.StatusOK {
+		t.Fatalf("get quizzes status = %d, want 200", getQuizzes.Code)
+	}
+
+	fail := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
+		Answers: []quizSubmissionAnswer{{QuizID: q1.ID, Answer: "B"}, {QuizID: q2.ID, Answer: "A"}},
+	}, "application/json", cookies)
+	if fail.Code != http.StatusAccepted {
+		t.Fatalf("failing submit status = %d, body = %q, want 202", fail.Code, fail.Body.String())
+	}
+}
+
+func TestLoginEdgeCases(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+
+	badJSON := doRequest(t, handler, http.MethodPost, "/pub/auth/login", "not-json", "application/json", nil)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("login bad json status = %d, want 400", badJSON.Code)
+	}
+
+	missingFields := doRequest(t, handler, http.MethodPost, "/pub/auth/login", map[string]string{"email": "", "password": ""}, "application/json", nil)
+	if missingFields.Code != http.StatusBadRequest {
+		t.Fatalf("login missing fields status = %d, want 400", missingFields.Code)
+	}
+
+	unknown := doRequest(t, handler, http.MethodPost, "/pub/auth/login", map[string]string{
+		"email":    "ghost@example.com",
+		"password": "AnyPass123!",
+	}, "application/json", nil)
+	if unknown.Code != http.StatusUnauthorized {
+		t.Fatalf("login unknown email status = %d, want 401", unknown.Code)
+	}
+}
+
+func TestCreateCourseNoteForbiddenAndDefaultTitle(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	ownerCookies, _ := signupForHandlerTest(t, handler, "note-creator@example.com")
+	intruderCookies, _ := signupForHandlerTest(t, handler, "note-intruder-create@example.com")
+	course := createCourseForRouteTest(t, handler, ownerCookies, "Notes course", "Has notes")
+
+	forbidden := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/course/%d/notes", course.ID), map[string]string{"title": "Hi"}, "application/json", intruderCookies)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("intruder note create status = %d, want 403", forbidden.Code)
+	}
+
+	emptyBody := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/course/%d/notes", course.ID), nil, "", ownerCookies)
+	if emptyBody.Code != http.StatusOK {
+		t.Fatalf("empty body note create status = %d, body = %q, want 200 (default title)", emptyBody.Code, emptyBody.Body.String())
+	}
+	var note noteman.Note
+	if err := json.NewDecoder(emptyBody.Body).Decode(&note); err != nil {
+		t.Fatalf("decode default note: %v", err)
+	}
+	if strings.TrimSpace(note.Title) == "" {
+		t.Fatal("default note title is empty, want fallback")
+	}
+}
+
+func TestSignupValidatorRejectsBadEmail(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+
+	rr := doRequest(t, handler, http.MethodPost, "/pub/auth/signup", map[string]string{
+		"firstname": "X",
+		"lastname":  "Y",
+		"email":     "not-an-email",
+		"password":  "StrongPass123!",
+	}, "application/json", nil)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("bad email signup status = %d, want 400", rr.Code)
+	}
+
+	missing := doRequest(t, handler, http.MethodPost, "/pub/auth/signup", map[string]string{
+		"firstname": "X",
+		"lastname":  "Y",
+		"email":     "",
+		"password":  "StrongPass123!",
+	}, "application/json", nil)
+	if missing.Code != http.StatusBadRequest {
+		t.Fatalf("missing email signup status = %d, want 400", missing.Code)
+	}
+}
+
+func TestSetChosenMiddlewareNotFound(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, signedUp := signupForHandlerTest(t, handler, "middleware-404@example.com")
+	user, err := app.Users.GetByID(signedUp.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error = %v", err)
+	}
+	user.Role = userman.ROLE_ADMIN
+	if _, err := app.Users.Save(user); err != nil {
+		t.Fatalf("promote admin: %v", err)
+	}
+
+	missingCourse := doRequest(t, handler, http.MethodGet, "/api/course/999999/", nil, "", cookies)
+	if missingCourse.Code != http.StatusNotFound {
+		t.Fatalf("missing course status = %d, want 404", missingCourse.Code)
+	}
+	missingNote := doRequest(t, handler, http.MethodPatch, "/api/notes/999999/", map[string]string{"title": "X"}, "application/json", cookies)
+	if missingNote.Code != http.StatusNotFound {
+		t.Fatalf("missing note status = %d, want 404", missingNote.Code)
+	}
+	missingUser := doRequest(t, handler, http.MethodGet, "/api/users/999999/", nil, "", cookies)
+	if missingUser.Code != http.StatusNotFound {
+		t.Fatalf("missing user status = %d, want 404", missingUser.Code)
+	}
+}
+
+func TestEditUserAndUpdateUserInfoValidation(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, signedUp := signupForHandlerTest(t, handler, "user-edit@example.com")
+	user, err := app.Users.GetByID(signedUp.ID)
+	if err != nil {
+		t.Fatalf("GetByID() error = %v", err)
+	}
+	user.Role = userman.ROLE_ADMIN
+	if _, err := app.Users.Save(user); err != nil {
+		t.Fatalf("promote admin: %v", err)
+	}
+
+	badJSONEdit := doRequest(t, handler, http.MethodPut, fmt.Sprintf("/api/users/%d/", signedUp.ID), "not-json", "application/json", cookies)
+	if badJSONEdit.Code != http.StatusBadRequest {
+		t.Fatalf("edit bad json status = %d, want 400", badJSONEdit.Code)
+	}
+
+	noEmail := doRequest(t, handler, http.MethodPut, fmt.Sprintf("/api/users/%d/", signedUp.ID), map[string]string{
+		"firstname": "X",
+		"lastname":  "Y",
+		"email":     "",
+	}, "application/json", cookies)
+	if noEmail.Code != http.StatusBadRequest {
+		t.Fatalf("edit no email status = %d, want 400", noEmail.Code)
+	}
+
+	badJSONMe := doRequest(t, handler, http.MethodPost, "/api/me", "not-json", "application/json", cookies)
+	if badJSONMe.Code != http.StatusBadRequest {
+		t.Fatalf("me bad json status = %d, want 400", badJSONMe.Code)
+	}
+
+	noEmailMe := doRequest(t, handler, http.MethodPost, "/api/me", map[string]string{
+		"firstname": "X",
+		"lastname":  "Y",
+		"email":     "",
+	}, "application/json", cookies)
+	if noEmailMe.Code != http.StatusBadRequest {
+		t.Fatalf("me no email status = %d, want 400", noEmailMe.Code)
+	}
+}
+
+func TestAskCourseChatValidationAndForbidden(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	app.EguneService = fakeEguneClient{answer: "ok"}
+
+	ownerCookies, _ := signupForHandlerTest(t, handler, "chat-owner@example.com")
+	intruderCookies, _ := signupForHandlerTest(t, handler, "chat-intruder@example.com")
+	course := createCourseForRouteTest(t, handler, ownerCookies, "Chat course", "Chat course description")
+
+	badJSON := doRequest(t, handler, http.MethodPost, "/api/ai/chat", "not-json", "application/json", ownerCookies)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("chat bad json status = %d, want 400", badJSON.Code)
+	}
+
+	missingCourse := doRequest(t, handler, http.MethodPost, "/api/ai/chat", chatPayload{CourseID: 999999, Question: "Q?"}, "application/json", ownerCookies)
+	if missingCourse.Code != http.StatusNotFound {
+		t.Fatalf("chat missing course status = %d, want 404", missingCourse.Code)
+	}
+
+	forbidden := doRequest(t, handler, http.MethodPost, "/api/ai/chat", chatPayload{CourseID: course.ID, Question: "Q?"}, "application/json", intruderCookies)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("chat forbidden status = %d, want 403", forbidden.Code)
+	}
+}
+
+func TestAddFlashcardValidation(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, _ := signupForHandlerTest(t, handler, "flash-validator@example.com")
+	emptyCourse := createCourseForRouteTest(t, handler, cookies, "Empty", "No notes")
+
+	badJSON := doRequest(t, handler, http.MethodPost, "/api/flashcards", "not-json", "application/json", cookies)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("flashcard bad json status = %d, want 400", badJSON.Code)
+	}
+
+	emptyTerm := doRequest(t, handler, http.MethodPost, "/api/flashcards", flashcardPayload{CourseID: emptyCourse.ID, Term: "", Definition: "def"}, "application/json", cookies)
+	if emptyTerm.Code != http.StatusBadRequest {
+		t.Fatalf("flashcard empty term status = %d, want 400", emptyTerm.Code)
+	}
+
+	missingCourse := doRequest(t, handler, http.MethodPost, "/api/flashcards", flashcardPayload{CourseID: 999999, Term: "T", Definition: "D"}, "application/json", cookies)
+	if missingCourse.Code != http.StatusNotFound {
+		t.Fatalf("flashcard missing course status = %d, want 404", missingCourse.Code)
+	}
+
+	noNotes := doRequest(t, handler, http.MethodPost, "/api/flashcards", flashcardPayload{CourseID: emptyCourse.ID, Term: "T", Definition: "D"}, "application/json", cookies)
+	if noNotes.Code != http.StatusBadRequest {
+		t.Fatalf("flashcard no notes status = %d, want 400", noNotes.Code)
+	}
+}
+
+func TestGetNoteQuizzesForbidden(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	ownerCookies, _ := signupForHandlerTest(t, handler, "quiz-owner@example.com")
+	intruderCookies, _ := signupForHandlerTest(t, handler, "quiz-intruder@example.com")
+	course := createCourseForRouteTest(t, handler, ownerCookies, "Quiz course", "Has quizzes")
+	note := createNoteForRouteTest(t, handler, ownerCookies, course.ID, "Topic", "Summary")
+
+	forbidden := doRequest(t, handler, http.MethodGet, fmt.Sprintf("/api/notes/%d/quizzes", note.ID), nil, "", intruderCookies)
+	if forbidden.Code != http.StatusForbidden {
+		t.Fatalf("intruder get quizzes status = %d, want 403", forbidden.Code)
+	}
+
+	forbiddenSubmit := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
+		Answers: []quizSubmissionAnswer{{QuizID: 1, Answer: "A"}},
+	}, "application/json", intruderCookies)
+	if forbiddenSubmit.Code != http.StatusForbidden {
+		t.Fatalf("intruder submit quizzes status = %d, want 403", forbiddenSubmit.Code)
+	}
+}
+
+func TestSignupRejectsInvalidPayloads(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+
+	badJSON := doRequest(t, handler, http.MethodPost, "/pub/auth/signup", "not-json", "application/json", nil)
+	if badJSON.Code != http.StatusBadRequest {
+		t.Fatalf("signup bad json status = %d, want 400", badJSON.Code)
+	}
+
+	weakPass := doRequest(t, handler, http.MethodPost, "/pub/auth/signup", map[string]string{
+		"firstname": "X",
+		"lastname":  "Y",
+		"email":     "x@example.com",
+		"password":  "short",
+	}, "application/json", nil)
+	if weakPass.Code != http.StatusBadRequest {
+		t.Fatalf("signup weak password status = %d, want 400", weakPass.Code)
+	}
+
+	_, _ = signupForHandlerTest(t, handler, "duplicate@example.com")
+	dup := doRequest(t, handler, http.MethodPost, "/pub/auth/signup", map[string]string{
+		"firstname": "Dup",
+		"lastname":  "User",
+		"email":     "duplicate@example.com",
+		"password":  "StrongPass123!",
+	}, "application/json", nil)
+	if dup.Code == http.StatusOK {
+		t.Fatalf("duplicate signup status = 200, want error")
+	}
 }

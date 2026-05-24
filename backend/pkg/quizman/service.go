@@ -3,7 +3,6 @@ package quizman
 import (
 	"errors"
 	"log"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -27,10 +26,6 @@ func (s *Service) parseFilter(filter *Filter) *gorm.DB {
 
 	if filter == nil {
 		return query
-	}
-
-	if filter.UserID > 0 {
-		query = query.Where("user_id = ?", filter.UserID)
 	}
 
 	if filter.NoteID > 0 {
@@ -96,39 +91,10 @@ func (s *Service) Get(data *Quiz) (*Quiz, error) {
 	return quiz, nil
 }
 
-func (s *Service) GetWithAuthTypes(data *Quiz, authTypes []string) (*Quiz, error) {
-	var quiz *Quiz
-
-	if err := s.db.Where("auth_type IN (?) AND self_deleted_at IS NULL", authTypes).First(&quiz, data).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		} else {
-			return nil, err
-		}
-	}
-
-	return quiz, nil
-}
-
 func (s *Service) GetByID(ID int) (*Quiz, error) {
 	var quiz *Quiz
 
 	if err := s.db.First(&quiz, ID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		} else {
-			return nil, err
-		}
-	}
-
-	return quiz, nil
-}
-
-func (s *Service) GetRecentlyDeleted(data *Quiz, authTypes []string) (*Quiz, error) {
-	var quiz *Quiz
-	yesterday := time.Now().AddDate(0, 0, -1)
-
-	if err := s.db.Where("self_deleted_at IS NOT NULL AND self_deleted_at<?", yesterday).Where("auth_type IN (?)", authTypes).First(&quiz, data).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {

@@ -3,7 +3,6 @@ package noteman
 import (
 	"errors"
 	"log"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -27,10 +26,6 @@ func (s *Service) parseFilter(filter *Filter) *gorm.DB {
 
 	if filter == nil {
 		return query
-	}
-
-	if filter.UserID > 0 {
-		query = query.Where("user_id = ?", filter.UserID)
 	}
 
 	if filter.CourseID > 0 {
@@ -101,39 +96,10 @@ func (s *Service) Get(data *Note) (*Note, error) {
 	return note, nil
 }
 
-func (s *Service) GetWithAuthTypes(data *Note, authTypes []string) (*Note, error) {
-	var note *Note
-
-	if err := s.db.Where("auth_type IN (?) AND self_deleted_at IS NULL", authTypes).First(&note, data).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		} else {
-			return nil, err
-		}
-	}
-
-	return note, nil
-}
-
 func (s *Service) GetByID(ID int, preloads ...string) (*Note, error) {
 	var note *Note
 
 	if err := s.db.First(&note, ID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		} else {
-			return nil, err
-		}
-	}
-
-	return note, nil
-}
-
-func (s *Service) GetRecentlyDeleted(data *Note, authTypes []string) (*Note, error) {
-	var note *Note
-	yesterday := time.Now().AddDate(0, 0, -1)
-
-	if err := s.db.Where("self_deleted_at IS NOT NULL AND self_deleted_at<?", yesterday).Where("auth_type IN (?)", authTypes).First(&note, data).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {

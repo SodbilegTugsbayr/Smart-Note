@@ -3,7 +3,6 @@ package courseman
 import (
 	"errors"
 	"log"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -97,20 +96,6 @@ func (s *Service) Get(data *Course) (*Course, error) {
 	return course, nil
 }
 
-func (s *Service) GetWithAuthTypes(data *Course, authTypes []string) (*Course, error) {
-	var course *Course
-
-	if err := s.db.Where("auth_type IN (?) AND self_deleted_at IS NULL", authTypes).First(&course, data).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		} else {
-			return nil, err
-		}
-	}
-
-	return course, nil
-}
-
 func (s *Service) GetByID(ID int, preloads ...string) (*Course, error) {
 	query := s.db
 	var course *Course
@@ -120,21 +105,6 @@ func (s *Service) GetByID(ID int, preloads ...string) (*Course, error) {
 	}
 
 	if err := query.First(&course, ID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
-		} else {
-			return nil, err
-		}
-	}
-
-	return course, nil
-}
-
-func (s *Service) GetRecentlyDeleted(data *Course, authTypes []string) (*Course, error) {
-	var course *Course
-	yesterday := time.Now().AddDate(0, 0, -1)
-
-	if err := s.db.Where("self_deleted_at IS NOT NULL AND self_deleted_at<?", yesterday).Where("auth_type IN (?)", authTypes).First(&course, data).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNotFound
 		} else {
