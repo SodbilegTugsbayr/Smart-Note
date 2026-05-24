@@ -38,6 +38,22 @@ type quizSubmissionPayload struct {
 	Answers []quizSubmissionAnswer `json:"answers"`
 }
 
+type quizResponse struct {
+	ID       int      `json:"id"`
+	NoteID   int      `json:"note_id"`
+	Question string   `json:"question"`
+	Options  []string `json:"options"`
+}
+
+type quizAnswerResult struct {
+	QuizID         int      `json:"quiz_id"`
+	Question       string   `json:"question"`
+	Options        []string `json:"options"`
+	SelectedAnswer string   `json:"selected_answer"`
+	CorrectAnswer  string   `json:"correct_answer"`
+	Correct        bool     `json:"correct"`
+}
+
 type quizSubmissionResponse struct {
 	Score        int                 `json:"score"`
 	Total        int                 `json:"total"`
@@ -45,6 +61,7 @@ type quizSubmissionResponse struct {
 	Passed       bool                `json:"passed"`
 	Regenerating bool                `json:"regenerating"`
 	Message      string              `json:"message"`
+	Answers      []quizAnswerResult  `json:"answers"`
 	Result       *quizman.QuizResult `json:"result,omitempty"`
 	Note         *noteman.Note       `json:"note,omitempty"`
 	Course       *courseman.Course   `json:"course,omitempty"`
@@ -266,7 +283,7 @@ func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	oapi.SendResp(w, map[string]interface{}{
-		"items": quizzes,
+		"items": publicQuizResponses(quizzes),
 		"total": total,
 	})
 }
@@ -326,10 +343,22 @@ func submitNoteQuiz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	score := 0
+	answerResults := make([]quizAnswerResult, 0, len(quizzes))
 	for _, quiz := range quizzes {
-		if submittedAnswers[quiz.ID] == strings.TrimSpace(quiz.CorrectAnswer) {
+		selectedAnswer := submittedAnswers[quiz.ID]
+		correctAnswer := strings.TrimSpace(quiz.CorrectAnswer)
+		correct := selectedAnswer == correctAnswer
+		if correct {
 			score++
 		}
+		answerResults = append(answerResults, quizAnswerResult{
+			QuizID:         quiz.ID,
+			Question:       quiz.Question,
+			Options:        quiz.Options,
+			SelectedAnswer: selectedAnswer,
+			CorrectAnswer:  correctAnswer,
+			Correct:        correct,
+		})
 	}
 
 	total := len(quizzes)
@@ -374,6 +403,7 @@ func submitNoteQuiz(w http.ResponseWriter, r *http.Request) {
 		Percentage: percentage,
 		Passed:     passed,
 		Result:     result,
+		Answers:    answerResults,
 		Note:       savedNote,
 		Course:     updatedCourse,
 	}
@@ -391,6 +421,34 @@ func submitNoteQuiz(w http.ResponseWriter, r *http.Request) {
 	go regenerateNoteQuizzes(&noteToRegenerate, loggedUser.ID)
 
 	oapi.SendRespStatus(w, http.StatusAccepted, resp)
+}
+
+func publicQuizResponses(quizzes []*quizman.Quiz) []quizResponse {
+	result := make([]quizResponse, 0, len(quizzes))
+	for _, quiz := range quizzes {
+		if quiz == nil {
+			continue
+		}
+		result = append(result, publicQuizResponse(quiz))
+	}
+	return result
+}
+
+func publicQuizResponse(quiz *quizman.Quiz) quizResponse {
+	return quizResponse{
+		ID:       quiz.ID,
+		NoteID:   quiz.NoteID,
+		Question: quiz.Question,
+		Options:  quiz.Options,
+	}
+}
+
+func publicGeneratedQuizResponses(quizzes []quizman.Quiz) []quizResponse {
+	result := make([]quizResponse, 0, len(quizzes))
+	for i := range quizzes {
+		result = append(result, publicQuizResponse(&quizzes[i]))
+	}
+	return result
 }
 
 func syncCourseProgress(courseID int) (*courseman.Course, error) {

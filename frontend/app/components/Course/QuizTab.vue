@@ -17,19 +17,19 @@ const submitting = ref(false)
 const regenerating = ref(false)
 const resultMessage = ref("")
 const passed = ref(false)
+const resultAnswers = ref([])
+const resultScore = ref(0)
+const resultTotal = ref(0)
+const resultPercentage = ref(0)
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
   return notes.find((note) => note.id === props.activeNoteId) || notes[0] || null
 })
 const currentQuiz = computed(() => quizzes.value[currentQ.value] || null)
-const score = computed(() => answers.value.filter((a) => a.correct).length)
-const pct = computed(() =>
-  quizzes.value.length > 0 ? Math.round((score.value / quizzes.value.length) * 100) : 0,
-)
-const hasPassingScore = computed(
-  () => quizzes.value.length > 0 && score.value * 100 > 90 * quizzes.value.length,
-)
+const score = computed(() => resultScore.value)
+const pct = computed(() => resultPercentage.value)
+const resultCount = computed(() => resultTotal.value || quizzes.value.length)
 
 watch(
   () => props.activeNoteId,
@@ -101,13 +101,11 @@ async function fetchQuizzes(noteId) {
 
 function handleAnswer(answer) {
   if (showResult.value) return
-  const isCorrect = answer === currentQuiz.value?.correct_answer
   selectedAnswer.value = answer
   showResult.value = true
   answers.value.push({
     quiz_id: currentQuiz.value?.id,
     answer,
-    correct: isCorrect,
   })
 }
 
@@ -119,8 +117,6 @@ async function handleNext() {
     selectedAnswer.value = null
     showResult.value = false
   } else {
-    quizDone.value = true
-    passed.value = hasPassingScore.value
     await submitQuizResult()
   }
 }
@@ -132,6 +128,10 @@ function resetQuizState() {
   answers.value = []
   quizDone.value = false
   passed.value = false
+  resultAnswers.value = []
+  resultScore.value = 0
+  resultTotal.value = 0
+  resultPercentage.value = 0
 }
 
 function resetQuiz() {
@@ -161,6 +161,11 @@ async function submitQuizResult() {
     passed.value = !!result?.passed
     regenerating.value = !!result?.regenerating
     resultMessage.value = result?.message || ""
+    resultAnswers.value = result?.answers || []
+    resultScore.value = Number(result?.score || 0)
+    resultTotal.value = Number(result?.total || resultAnswers.value.length || quizzes.value.length)
+    resultPercentage.value = Number(result?.percentage || 0)
+    quizDone.value = true
     mergeQuizSubmission(result)
   } catch (err) {
     errorMessage.value = err?.data?.message || "Тестийн үр дүн хадгалахад алдаа гарлаа"
@@ -207,11 +212,8 @@ function optionClass(option) {
   if (!showResult.value) {
     return "hover:border-indigo-500/30"
   }
-  if (option === currentQuiz.value?.correct_answer) {
-    return "border-teal-500/40 bg-teal-500/10 text-teal-800"
-  }
   if (option === selectedAnswer.value) {
-    return "border-red-500/40 bg-red-500/10 text-red-700"
+    return "border-indigo-500/40 bg-indigo-500/10 text-indigo-800"
   }
   return "opacity-70"
 }
@@ -256,44 +258,82 @@ function optionClass(option) {
       </p>
     </div>
 
-    <div v-else-if="quizDone" class="glass-card rounded-xl p-8 text-center">
-      <template v-if="passed">
-        <div
-          class="w-20 h-20 rounded-full gradient-teal flex items-center justify-center mx-auto mb-4"
-        >
-          <TrophyIcon class="w-10 h-10 text-white" />
-        </div>
-        <h3 class="font-heading text-2xl text-foreground mb-2">Баяр хүргэе!</h3>
-        <p class="text-teal-700 text-lg font-medium">
-          {{ score }}/{{ quizzes.length }} ({{ pct }}%)
+    <div v-else-if="quizDone" class="glass-card rounded-xl p-8 space-y-6">
+      <div class="text-center">
+        <template v-if="passed">
+          <div
+            class="w-20 h-20 rounded-full gradient-teal flex items-center justify-center mx-auto mb-4"
+          >
+            <TrophyIcon class="w-10 h-10 text-white" />
+          </div>
+          <h3 class="font-heading text-2xl text-foreground mb-2">Баяр хүргэе!</h3>
+        </template>
+        <template v-else>
+          <div
+            class="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mx-auto mb-4"
+          >
+            <span class="text-3xl font-heading text-indigo-600">{{ pct }}%</span>
+          </div>
+          <h3 class="font-heading text-2xl text-foreground mb-2">Тестийн үр дүн</h3>
+        </template>
+
+        <p class="text-lg font-medium" :class="passed ? 'text-teal-700' : 'text-indigo-700'">
+          {{ score }}/{{ resultCount }} ({{ pct }}%)
         </p>
         <p class="text-muted-foreground text-sm mt-2">
-          {{ resultMessage || "Та энэ тэмдэглэлийг амжилттай дууслаа!" }}
+          {{ resultMessage || (passed ? "Та энэ тэмдэглэлийг амжилттай дууслаа!" : "90%-аас их авбал дуусгана.") }}
         </p>
-      </template>
-      <template v-else>
-        <div
-          class="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mx-auto mb-4"
-        >
-          <span class="text-3xl font-heading text-indigo-600">{{ pct }}%</span>
-        </div>
-        <h3 class="font-heading text-2xl text-foreground mb-2">Тестийн үр дүн</h3>
-        <p class="text-muted-foreground text-sm mb-3">
-          {{ score }}/{{ quizzes.length }} зөв хариулт. 90%-аас их авбал дуусгана.
-        </p>
+
         <div
           v-if="submitting || regenerating"
-          class="flex items-center justify-center gap-2 text-sm text-indigo-700"
+          class="mt-3 flex items-center justify-center gap-2 text-sm text-indigo-700"
         >
           <Loader2Icon class="w-4 h-4 animate-spin" />
           <span>
             {{ submitting ? "Үр дүн хадгалж байна" : resultMessage || "Тест дахин үүсгэж байна" }}
           </span>
         </div>
-        <p v-else-if="resultMessage" class="text-sm text-muted-foreground">
-          {{ resultMessage }}
+      </div>
+
+      <div v-if="resultAnswers.length" class="space-y-3 text-left">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Хариултын дэлгэрэнгүй
         </p>
-      </template>
+        <div
+          v-for="(item, idx) in resultAnswers"
+          :key="item.quiz_id"
+          class="rounded-xl border px-4 py-3"
+          :class="
+            item.correct
+              ? 'border-teal-500/30 bg-teal-500/5'
+              : 'border-red-500/30 bg-red-500/5'
+          "
+        >
+          <div class="flex items-start justify-between gap-3">
+            <p class="text-sm font-medium text-foreground">
+              {{ idx + 1 }}. {{ item.question }}
+            </p>
+            <span
+              class="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+              :class="item.correct ? 'bg-teal-500/10 text-teal-700' : 'bg-red-500/10 text-red-700'"
+            >
+              {{ item.correct ? "Зөв" : "Буруу" }}
+            </span>
+          </div>
+          <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+            <div class="rounded-lg bg-white/70 px-3 py-2">
+              <p class="text-xs text-muted-foreground">Таны хариулт</p>
+              <p :class="item.correct ? 'text-teal-700' : 'text-red-700'">
+                {{ item.selected_answer || "Хариулаагүй" }}
+              </p>
+            </div>
+            <div class="rounded-lg bg-white/70 px-3 py-2">
+              <p class="text-xs text-muted-foreground">Зөв хариулт</p>
+              <p class="text-teal-700">{{ item.correct_answer }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div v-else-if="currentQuiz" class="glass-card rounded-xl p-6 space-y-5">
@@ -326,16 +366,8 @@ function optionClass(option) {
 
       <div v-if="showResult" class="space-y-3">
         <div class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-          <p class="text-xs text-indigo-600 mb-1 uppercase tracking-wider">Зөв хариулт</p>
-          <p class="text-sm text-foreground">{{ currentQuiz.correct_answer }}</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <span
-            class="text-sm font-medium"
-            :class="selectedAnswer === currentQuiz.correct_answer ? 'text-teal-700' : 'text-red-600'"
-          >
-            {{ selectedAnswer === currentQuiz.correct_answer ? "Зөв хариуллаа" : "Буруу хариуллаа" }}
-          </span>
+          <p class="text-xs text-indigo-600 mb-1 uppercase tracking-wider">Сонгосон хариулт</p>
+          <p class="text-sm text-foreground">{{ selectedAnswer }}</p>
         </div>
         <button
           @click="handleNext"

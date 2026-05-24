@@ -33,7 +33,7 @@ type noteQuizRegenerationPayload struct {
 	Stage    string         `json:"stage"`
 	Message  string         `json:"message"`
 	Error    string         `json:"error,omitempty"`
-	Quizzes  []quizman.Quiz `json:"quizzes,omitempty"`
+	Quizzes  []quizResponse `json:"quizzes,omitempty"`
 }
 
 func processNote(note *noteman.Note, recipientUserIDs ...int) {
@@ -165,7 +165,7 @@ func regenerateNoteQuizzes(note *noteman.Note, recipientUserIDs ...int) {
 		return
 	}
 
-	publishNoteQuizRegeneration(note, recipientUserIDs, "completed", "Шинэ тест бэлэн боллоо", "", savedQuizzes)
+	publishNoteQuizRegeneration(note, recipientUserIDs, "completed", "Шинэ тест бэлэн боллоо", "", publicGeneratedQuizResponses(savedQuizzes))
 }
 
 func markNoteProcessingFailed(note *noteman.Note, recipientUserIDs []int, message string, cause error) {
@@ -211,7 +211,7 @@ func publishNoteProcessProgress(note *noteman.Note, recipientUserIDs []int, stag
 	}
 }
 
-func publishNoteQuizRegeneration(note *noteman.Note, recipientUserIDs []int, stage, message, errMessage string, quizzes []quizman.Quiz) {
+func publishNoteQuizRegeneration(note *noteman.Note, recipientUserIDs []int, stage, message, errMessage string, quizzes []quizResponse) {
 	if note == nil {
 		return
 	}
