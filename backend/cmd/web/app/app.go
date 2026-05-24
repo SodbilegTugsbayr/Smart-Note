@@ -7,19 +7,14 @@ import (
 	"time"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/apputils"
-	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/mailer"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common/websocket"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/courseman"
-	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/easyOAuth2"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/eguneapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/ocrapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/golangcollege/sessions"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/facebook"
-	"golang.org/x/oauth2/google"
 	"gorm.io/gorm"
 )
 
@@ -38,13 +33,10 @@ var (
 	CustomerWSCsMutex     *sync.RWMutex
 
 	// Services
-	Mailer         *mailer.Mailer
-	Users          *userman.Service
-	Notes          *noteman.Service
-	Quizzes        *quizman.Service
-	Courses        *courseman.Service
-	GoogleOAuth2   *easyOAuth2.EasyOAuthClient
-	FacebookOAuth2 *easyOAuth2.EasyOAuthClient
+	Users   *userman.Service
+	Notes   *noteman.Service
+	Quizzes *quizman.Service
+	Courses *courseman.Service
 
 	//AIService
 	EguneService *eguneapi.EguneService
@@ -66,29 +58,6 @@ func Init(path string) {
 	Location = loc
 
 	apputils.LoadConfig(&Config, path)
-
-	GoogleOAuth2 = &easyOAuth2.EasyOAuthClient{
-		Name: "google",
-		Config: &oauth2.Config{
-			RedirectURL:  Config.OAuth2.Google.RedirectURL,
-			ClientID:     Config.OAuth2.Google.ClientID,
-			ClientSecret: Config.OAuth2.Google.ClientSecret,
-			Scopes:       Config.OAuth2.Google.Scopes,
-			Endpoint:     google.Endpoint,
-		},
-		UserInfoEndpoint: Config.OAuth2.Google.UserInfoEndpoint,
-	}
-	FacebookOAuth2 = &easyOAuth2.EasyOAuthClient{
-		Name: "facebook",
-		Config: &oauth2.Config{
-			RedirectURL:  Config.OAuth2.Facebook.RedirectURL,
-			ClientID:     Config.OAuth2.Facebook.ClientID,
-			ClientSecret: Config.OAuth2.Facebook.ClientSecret,
-			Scopes:       Config.OAuth2.Facebook.Scopes,
-			Endpoint:     facebook.Endpoint,
-		},
-		UserInfoEndpoint: Config.OAuth2.Facebook.UserInfoEndpoint,
-	}
 
 	DB = apputils.OpenDB(Config.DSN)
 

@@ -5,14 +5,6 @@ const (
 	MODE_PRODUCTION = "production"
 )
 
-type oauthConfig struct {
-	RedirectURL      string   `yaml:"redirect_url"`
-	ClientID         string   `yaml:"client_id"`
-	ClientSecret     string   `yaml:"client_secret"`
-	Scopes           []string `yaml:"scopes"`
-	UserInfoEndpoint string   `yaml:"user_info_endpoint"`
-}
-
 type conf struct {
 	Mode          string `yaml:"mode"`
 	Port          string `yaml:"port"`
@@ -20,11 +12,7 @@ type conf struct {
 	DSN           string `yaml:"dsn"`
 	TimezoneLoc   string `yaml:"timezone_loc"`
 	FilePath      string `yaml:"file_path"`
-	OAuth2        struct {
-		Google   oauthConfig `yaml:"google"`
-		Facebook oauthConfig `yaml:"facebook"`
-	} `yaml:"oauth2"`
-	EguneAPI struct {
+	EguneAPI      struct {
 		BaseURL string `yaml:"base_url"`
 		APIKey  string `yaml:"api_key"`
 		Model   string `yaml:"model"`

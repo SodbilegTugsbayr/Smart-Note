@@ -11,9 +11,7 @@ const (
 	ROLE_USER  = "user"
 	ROLE_ADMIN = "admin"
 
-	AUTH_TYPE_BASIC    = "basic"
-	AUTH_TYPE_FACEBOOK = "facebook"
-	AUTH_TYPE_GOOGLE   = "google"
+	AUTH_TYPE_BASIC = "basic"
 )
 
 type User struct {
@@ -25,11 +23,7 @@ type User struct {
 	LastName       string       `json:"lastname"`
 	PhoneNumber    string       `json:"phone_number"`
 	Location       string       `json:"location"`
-	FacebookURL    string       `json:"facebook_url"`
-	MessengerURL   string       `json:"messenger_url"`
 	Email          string       `json:"email"`
-	GoogleID       string       `json:"google_id"`
-	FacebookID     string       `json:"facebook_id"`
 	ProfilePicture string       `json:"profile_picture"`
 	PlanID         int          `json:"plan_id"` // @TO-DO
 	IsVerified     bool         `json:"is_verified"`
