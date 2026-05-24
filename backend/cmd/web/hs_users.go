@@ -98,7 +98,6 @@ func updateUserInfo(w http.ResponseWriter, r *http.Request) {
 
 	loggedUser.FirstName = data.FirstName
 	loggedUser.LastName = data.LastName
-	loggedUser.FacebookURL = data.FacebookURL
 	loggedUser.PhoneNumber = data.PhoneNumber
 
 	savedUser, err := app.Users.Save(loggedUser)
