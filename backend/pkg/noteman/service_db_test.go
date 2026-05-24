@@ -65,6 +65,43 @@ func TestNoteServiceDatabaseCRUDAndFilters(t *testing.T) {
 	}
 }
 
+func TestNoteServiceCountAndUserFilter(t *testing.T) {
+	db := testdb.Open(t)
+	service := noteman.NewService(db, testdb.DiscardLogger(), testdb.DiscardLogger())
+
+	course := &courseman.Course{UserID: 1, Title: "Linear Algebra"}
+	if err := db.Save(course).Error; err != nil {
+		t.Fatalf("create course: %v", err)
+	}
+
+	if _, err := service.Save(&noteman.Note{CourseID: course.ID, Title: "Vectors"}); err != nil {
+		t.Fatalf("Save(vectors): %v", err)
+	}
+	if _, err := service.Save(&noteman.Note{CourseID: course.ID, Title: "Matrices"}); err != nil {
+		t.Fatalf("Save(matrices): %v", err)
+	}
+
+	total, err := service.Count(nil)
+	if err != nil {
+		t.Fatalf("Count(nil) error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("Count(nil) = %d, want 2", total)
+	}
+
+	total, err = service.Count(&noteman.Filter{CourseID: course.ID})
+	if err != nil {
+		t.Fatalf("Count(course) error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("Count(course) = %d, want 2", total)
+	}
+
+	if _, _, err := service.GetAll(&noteman.Filter{OrderBy: "id desc"}, 0, 0); err != nil {
+		t.Fatalf("GetAll(OrderBy) error = %v", err)
+	}
+}
+
 func assertNoteFilterCount(t *testing.T, service *noteman.Service, filter *noteman.Filter, want int) {
 	t.Helper()
 

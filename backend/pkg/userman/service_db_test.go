@@ -1,8 +1,10 @@
 package userman_test
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/internal/testdb"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
@@ -87,6 +89,58 @@ func TestUserServiceDatabaseCRUDAndFilters(t *testing.T) {
 	}
 	if _, err := service.GetByID(alice.ID); !errors.Is(err, userman.ErrNotFound) {
 		t.Fatalf("GetByID(deleted) error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestUserServiceGetWithAuthTypesHappyPath(t *testing.T) {
+	db := testdb.Open(t)
+	service := userman.NewService(db, testdb.DiscardLogger(), testdb.DiscardLogger())
+
+	saved, err := service.Save(&userman.User{
+		FirstName: "Carol",
+		Email:     "carol@example.com",
+		AuthType:  userman.AUTH_TYPE_BASIC,
+		Role:      userman.ROLE_USER,
+	})
+	if err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+
+	got, err := service.GetWithAuthTypes(&userman.User{Email: saved.Email}, []string{userman.AUTH_TYPE_BASIC})
+	if err != nil {
+		t.Fatalf("GetWithAuthTypes() error = %v", err)
+	}
+	if got.ID != saved.ID {
+		t.Fatalf("GetWithAuthTypes().ID = %d, want %d", got.ID, saved.ID)
+	}
+}
+
+func TestUserServiceGetRecentlyDeleted(t *testing.T) {
+	db := testdb.Open(t)
+	service := userman.NewService(db, testdb.DiscardLogger(), testdb.DiscardLogger())
+
+	twoDaysAgo := time.Now().AddDate(0, 0, -2)
+	deleted, err := service.Save(&userman.User{
+		FirstName:     "Dan",
+		Email:         "dan@example.com",
+		AuthType:      userman.AUTH_TYPE_BASIC,
+		Role:          userman.ROLE_USER,
+		SelfDeletedAt: sql.NullTime{Time: twoDaysAgo, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("Save(deleted) error = %v", err)
+	}
+
+	got, err := service.GetRecentlyDeleted(&userman.User{Email: deleted.Email}, []string{userman.AUTH_TYPE_BASIC})
+	if err != nil {
+		t.Fatalf("GetRecentlyDeleted() error = %v", err)
+	}
+	if got.ID != deleted.ID {
+		t.Fatalf("GetRecentlyDeleted().ID = %d, want %d", got.ID, deleted.ID)
+	}
+
+	if _, err := service.GetRecentlyDeleted(&userman.User{Email: "absent@example.com"}, []string{userman.AUTH_TYPE_BASIC}); !errors.Is(err, userman.ErrNotFound) {
+		t.Fatalf("GetRecentlyDeleted(missing) error = %v, want ErrNotFound", err)
 	}
 }
 

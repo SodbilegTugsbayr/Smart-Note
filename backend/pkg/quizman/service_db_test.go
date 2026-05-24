@@ -82,6 +82,47 @@ func TestQuizServiceDatabaseCRUDFiltersAndResults(t *testing.T) {
 	}
 }
 
+func TestQuizServiceCountAndUserFilter(t *testing.T) {
+	db := testdb.Open(t)
+	service := quizman.NewService(db, testdb.DiscardLogger(), testdb.DiscardLogger())
+
+	course := &courseman.Course{UserID: 1, Title: "Physics"}
+	if err := db.Save(course).Error; err != nil {
+		t.Fatalf("create course: %v", err)
+	}
+	note := &noteman.Note{CourseID: course.ID, Title: "Kinematics"}
+	if err := db.Save(note).Error; err != nil {
+		t.Fatalf("create note: %v", err)
+	}
+
+	if _, err := service.Save(&quizman.Quiz{NoteID: note.ID, Question: "v=?", Options: []string{"A", "B"}, CorrectAnswer: "A"}); err != nil {
+		t.Fatalf("Save(q1): %v", err)
+	}
+	if _, err := service.Save(&quizman.Quiz{NoteID: note.ID, Question: "a=?", Options: []string{"A", "B"}, CorrectAnswer: "B"}); err != nil {
+		t.Fatalf("Save(q2): %v", err)
+	}
+
+	total, err := service.Count(nil)
+	if err != nil {
+		t.Fatalf("Count(nil) error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("Count(nil) = %d, want 2", total)
+	}
+
+	total, err = service.Count(&quizman.Filter{NoteID: note.ID})
+	if err != nil {
+		t.Fatalf("Count(NoteID) error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("Count(NoteID) = %d, want 2", total)
+	}
+
+	if _, _, err := service.GetAll(&quizman.Filter{OrderBy: "id desc"}, 0, 0); err != nil {
+		t.Fatalf("GetAll(OrderBy) error = %v", err)
+	}
+}
+
 func assertQuizFilterCount(t *testing.T, service *quizman.Service, filter *quizman.Filter, want int) {
 	t.Helper()
 

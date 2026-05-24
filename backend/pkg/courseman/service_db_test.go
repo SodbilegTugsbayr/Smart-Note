@@ -75,6 +75,42 @@ func TestCourseServiceDatabaseCRUDFiltersAndPreloads(t *testing.T) {
 	}
 }
 
+func TestCourseServiceCount(t *testing.T) {
+	db := testdb.Open(t)
+	service := courseman.NewService(db, testdb.DiscardLogger(), testdb.DiscardLogger())
+
+	if _, err := service.Save(&courseman.Course{UserID: 1, Title: "Calc I"}); err != nil {
+		t.Fatalf("Save(calc1): %v", err)
+	}
+	if _, err := service.Save(&courseman.Course{UserID: 2, Title: "Calc II"}); err != nil {
+		t.Fatalf("Save(calc2): %v", err)
+	}
+
+	total, err := service.Count(nil)
+	if err != nil {
+		t.Fatalf("Count(nil) error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("Count(nil) = %d, want 2", total)
+	}
+
+	total, err = service.Count(&courseman.Filter{UserID: 1})
+	if err != nil {
+		t.Fatalf("Count(UserID) error = %v", err)
+	}
+	if total != 1 {
+		t.Fatalf("Count(UserID=1) = %d, want 1", total)
+	}
+
+	total, err = service.Count(&courseman.Filter{Keyword: "Calc"})
+	if err != nil {
+		t.Fatalf("Count(Keyword) error = %v", err)
+	}
+	if total != 2 {
+		t.Fatalf("Count(Keyword) = %d, want 2", total)
+	}
+}
+
 func assertCourseFilterCount(t *testing.T, service *courseman.Service, filter *courseman.Filter, want int) {
 	t.Helper()
 
