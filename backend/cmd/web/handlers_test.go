@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -862,6 +863,47 @@ func doMultipartRequest(t *testing.T, handler http.Handler, method, path string,
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
 	return rr
+}
+
+func TestOnSocketConnectUnauthenticatedSkipsRegistration(t *testing.T) {
+	app.CustomerWSCs = make(map[int][]*websocket.Connection)
+	app.CustomerWSCsMutex = &sync.RWMutex{}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/ws", nil)
+	ctx := context.WithValue(req.Context(), app.ContextKeyIsAuthenticated, false)
+	conn := &websocket.Connection{Key: "skipped"}
+
+	if err := onSocketConnect(req.WithContext(ctx), conn); err != nil {
+		t.Fatalf("onSocketConnect(unauth) error = %v", err)
+	}
+	if len(app.CustomerWSCs) != 0 {
+		t.Fatalf("CustomerWSCs = %+v, want empty when unauthenticated", app.CustomerWSCs)
+	}
+}
+
+func TestOnSocketConnectRegistersAuthenticatedUserAndCleansUp(t *testing.T) {
+	app.CustomerWSCs = make(map[int][]*websocket.Connection)
+	app.CustomerWSCsMutex = &sync.RWMutex{}
+
+	user := &userman.User{}
+	user.ID = 42
+
+	req := httptest.NewRequest(http.MethodGet, "/api/ws", nil)
+	ctx := context.WithValue(req.Context(), app.ContextKeyIsAuthenticated, true)
+	ctx = context.WithValue(ctx, app.ContextKeyAuthUser, user)
+
+	conn := &websocket.Connection{Key: "conn-1"}
+	if err := onSocketConnect(req.WithContext(ctx), conn); err != nil {
+		t.Fatalf("onSocketConnect(auth) error = %v", err)
+	}
+	if len(app.CustomerWSCs[42]) != 1 || app.CustomerWSCs[42][0].Key != "conn-1" {
+		t.Fatalf("CustomerWSCs[42] = %+v, want one registered connection", app.CustomerWSCs[42])
+	}
+
+	conn.OnClose()
+	if len(app.CustomerWSCs[42]) != 0 {
+		t.Fatalf("CustomerWSCs[42] after close = %+v, want empty", app.CustomerWSCs[42])
+	}
 }
 
 func TestPingAndLogoutRoutes(t *testing.T) {
