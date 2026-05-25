@@ -117,9 +117,7 @@ async function handleDeleteNote() {
 <template>
   <div class="p-3">
     <div class="flex items-center justify-between gap-2 px-2 mb-3">
-      <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Тэмдэглэл
-      </p>
+      <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Тэмдэглэл</p>
       <button
         v-if="!readonly"
         @click="handleAddNote"
@@ -170,10 +168,7 @@ async function handleDeleteNote() {
           <DropdownMenuContent align="end" class="w-36">
             <DropdownMenuItem @click="openEditNote(note)"> Засах </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              class="text-red-600 focus:text-red-600"
-              @click="openDeleteNote(note)"
-            >
+            <DropdownMenuItem class="text-red-600 focus:text-red-600" @click="openDeleteNote(note)">
               Устгах
             </DropdownMenuItem>
           </DropdownMenuContent>

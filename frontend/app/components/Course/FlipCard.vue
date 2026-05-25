@@ -8,7 +8,7 @@ const flipped = ref(false)
 </script>
 
 <template>
-  <div class="cursor-pointer h-44" style="perspective: 1000px" @click="flipped = !flipped">
+  <div class="h-72 cursor-pointer sm:h-80" style="perspective: 1000px" @click="flipped = !flipped">
     <div
       class="relative w-full h-full transition-transform duration-500"
       :style="{
