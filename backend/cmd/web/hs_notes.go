@@ -17,6 +17,7 @@ import (
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/userman"
 	"github.com/google/uuid"
+	pdfapi "github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
 type createNotePayload struct {
@@ -68,6 +69,8 @@ type quizSubmissionResponse struct {
 }
 
 const quizPassPercent = 90
+const maxNoteUploadPDFPages = 50
+const largeNoteUploadMessage = "Файл хэтэрхий том байна. Хичээлийн ном оруулах хэсгээр файлыг оруулна уу"
 
 func createCourseNote(w http.ResponseWriter, r *http.Request) {
 	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
@@ -232,6 +235,25 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 		oapi.CustomError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	isPDF, err := isPDFFile(path)
+	if err != nil {
+		_ = os.RemoveAll(uploadDir)
+		oapi.CustomError(w, http.StatusBadRequest, "Файл уншихад алдаа гарлаа")
+		return
+	}
+	if isPDF {
+		pageCount, err := pdfapi.PageCountFile(path)
+		if err != nil {
+			_ = os.RemoveAll(uploadDir)
+			oapi.CustomError(w, http.StatusBadRequest, "PDF файл уншихад алдаа гарлаа")
+			return
+		}
+		if pageCount > maxNoteUploadPDFPages {
+			_ = os.RemoveAll(uploadDir)
+			oapi.CustomError(w, http.StatusBadRequest, largeNoteUploadMessage)
+			return
+		}
+	}
 
 	chosenNote.FilePath = path
 	chosenNote.IsFromBook = false
@@ -260,6 +282,26 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 
 	savedNote.PrepareResponse()
 	oapi.SendRespStatus(w, http.StatusAccepted, savedNote)
+}
+
+func isPDFFile(path string) (bool, error) {
+	if strings.EqualFold(filepath.Ext(path), ".pdf") {
+		return true, nil
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	buff := make([]byte, 512)
+	n, err := file.Read(buff)
+	if err != nil && err != io.EOF {
+		return false, err
+	}
+
+	return http.DetectContentType(buff[:n]) == "application/pdf", nil
 }
 
 func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {

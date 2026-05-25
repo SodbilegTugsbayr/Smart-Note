@@ -11,6 +11,9 @@ const saving = ref(false)
 const progress = ref(0)
 const errorMessage = ref("")
 const progressByNoteId = ref({})
+const MAX_NOTE_PDF_PAGES = 50
+const LARGE_NOTE_FILE_MESSAGE =
+  "Файл хэтэрхий том байна. Хичээлийн ном оруулах хэсгээр файлыг оруулна уу"
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
@@ -128,6 +131,48 @@ function mergeNote(updatedNote) {
   }
 }
 
+function isPdfFile(file) {
+  return file?.type === "application/pdf" || file?.name?.toLowerCase().endsWith(".pdf")
+}
+
+function loadPdfJs() {
+  return new Promise((resolve, reject) => {
+    const src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+    if (window.pdfjsLib) return resolve()
+    const existingScript = document.querySelector(`script[src="${src}"]`)
+    if (existingScript) {
+      existingScript.addEventListener("load", resolve, { once: true })
+      existingScript.addEventListener("error", reject, { once: true })
+      return
+    }
+    const script = Object.assign(document.createElement("script"), {
+      src,
+      onload: resolve,
+      onerror: reject,
+    })
+    document.head.appendChild(script)
+  })
+}
+
+async function validateNoteFile(file) {
+  if (!isPdfFile(file)) return true
+
+  try {
+    await loadPdfJs()
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+    const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise
+    if (pdf.numPages > MAX_NOTE_PDF_PAGES) {
+      errorMessage.value = LARGE_NOTE_FILE_MESSAGE
+      return false
+    }
+  } catch (err) {
+    console.error("PDF page count error:", err)
+  }
+
+  return true
+}
+
 async function handleSave() {
   if (props.readonly || !activeNote.value) return
   const cleanTitle = title.value.trim()
@@ -166,12 +211,14 @@ function handleFileAttach() {
     const targetNoteId = activeNote.value?.id
     if (!targetNoteId) return
 
+    errorMessage.value = ""
+    if (!(await validateNoteFile(file))) return
+
     const formData = new FormData()
     formData.append("file", file)
 
     uploading.value = true
     progress.value = 5
-    errorMessage.value = ""
     setNoteProgress(targetNoteId, {
       stage: "uploading",
       progress: 5,
