@@ -1,20 +1,39 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/eguneapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
 	"github.com/pdfcpu/pdfcpu/pkg/api"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const noteProcessProgressMessageType = "NOTE_PROCESS_PROGRESS"
 const noteQuizRegenerationMessageType = "NOTE_QUIZ_REGENERATION"
+
+const (
+	noteProcessWorkerCount = 4
+	ocrWorkerLimit         = 4
+	eguneWorkerLimit       = 2
+	noteProcessMaxAttempts = 3
+	noteProcessPollDelay   = 2 * time.Second
+	noteProcessStaleAfter  = 30 * time.Minute
+)
+
+var (
+	ocrLimiter   = make(chan struct{}, ocrWorkerLimit)
+	eguneLimiter = make(chan struct{}, eguneWorkerLimit)
+)
 
 type noteProcessProgressPayload struct {
 	CourseID      int           `json:"course_id"`
@@ -36,7 +55,235 @@ type noteQuizRegenerationPayload struct {
 	Quizzes  []quizResponse `json:"quizzes,omitempty"`
 }
 
-func processNote(note *noteman.Note, recipientUserIDs ...int) {
+func startNoteProcessingWorkers() func() {
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := requeueStaleNoteProcessJobs(); err != nil {
+		app.ErrorLog.Println("failed to requeue stale note process jobs: ", err)
+	}
+	for i := 0; i < noteProcessWorkerCount; i++ {
+		go noteProcessWorker(ctx)
+	}
+	return cancel
+}
+
+func requeueStaleNoteProcessJobs() error {
+	now := time.Now()
+	staleBefore := now.Add(-noteProcessStaleAfter)
+	return app.DB.Model(&noteman.NoteProcessJob{}).
+		Where("status = ? AND started_at < ? AND attempts < max_attempts", noteman.PROCESS_JOB_STATUS_PROCESSING, staleBefore).
+		Updates(map[string]interface{}{
+			"status":      noteman.PROCESS_JOB_STATUS_QUEUED,
+			"next_run_at": now,
+			"started_at":  nil,
+		}).Error
+}
+
+func noteProcessWorker(ctx context.Context) {
+	ticker := time.NewTicker(noteProcessPollDelay)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		job, err := claimNextNoteProcessJob()
+		if err != nil {
+			app.ErrorLog.Println("failed to claim note process job: ", err)
+		}
+		if job == nil {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+			continue
+		}
+
+		processNoteJob(job)
+	}
+}
+
+func enqueueNoteProcessing(noteID, recipientUserID int) error {
+	note, err := app.Notes.GetByID(noteID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(note.FilePath) == "" {
+		return fmt.Errorf("note has no source file")
+	}
+
+	now := time.Now()
+	return app.DB.Transaction(func(tx *gorm.DB) error {
+		var existing noteman.NoteProcessJob
+		err := tx.Where("note_id = ? AND status IN ?", noteID, []string{
+			noteman.PROCESS_JOB_STATUS_QUEUED,
+			noteman.PROCESS_JOB_STATUS_PROCESSING,
+		}).Order("created_at desc").First(&existing).Error
+		if err == nil {
+			if recipientUserID > 0 && existing.RecipientUserID == 0 {
+				existing.RecipientUserID = recipientUserID
+				if err := tx.Save(&existing).Error; err != nil {
+					return err
+				}
+			}
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		} else {
+			job := &noteman.NoteProcessJob{
+				NoteID:          noteID,
+				RecipientUserID: recipientUserID,
+				Status:          noteman.PROCESS_JOB_STATUS_QUEUED,
+				MaxAttempts:     noteProcessMaxAttempts,
+				NextRunAt:       &now,
+			}
+			if err := tx.Create(job).Error; err != nil {
+				return err
+			}
+		}
+
+		note.ProcessStatus = noteman.PROCESS_STATUS_QUEUED
+		if err := tx.Save(note).Error; err != nil {
+			return err
+		}
+		publishNoteProcessProgress(note, []int{recipientUserID}, "queued", 5, "AI боловсруулалтын дараалалд орлоо", "", true)
+		return nil
+	})
+}
+
+func claimNextNoteProcessJob() (*noteman.NoteProcessJob, error) {
+	var claimed *noteman.NoteProcessJob
+	now := time.Now()
+
+	if err := app.DB.Transaction(func(tx *gorm.DB) error {
+		var job noteman.NoteProcessJob
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"}).
+			Where("status = ? AND (next_run_at IS NULL OR next_run_at <= ?)", noteman.PROCESS_JOB_STATUS_QUEUED, now).
+			Order("created_at asc, id asc").
+			First(&job).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+
+		job.Status = noteman.PROCESS_JOB_STATUS_PROCESSING
+		job.Attempts++
+		job.StartedAt = &now
+		job.FinishedAt = nil
+		if job.MaxAttempts <= 0 {
+			job.MaxAttempts = noteProcessMaxAttempts
+		}
+		if err := tx.Save(&job).Error; err != nil {
+			return err
+		}
+		claimed = &job
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return claimed, nil
+}
+
+func processNoteJob(job *noteman.NoteProcessJob) {
+	note, err := app.Notes.GetByID(job.NoteID)
+	if err != nil {
+		markNoteProcessJobFailed(job, err)
+		return
+	}
+
+	err = processNote(note, job.RecipientUserID)
+	if err == nil {
+		markNoteProcessJobCompleted(job)
+		return
+	}
+
+	if job.Attempts < job.MaxAttempts && isRetryableProcessingError(err) {
+		requeueNoteProcessJob(job, note, err)
+		return
+	}
+	markNoteProcessJobFailed(job, err)
+}
+
+func markNoteProcessJobCompleted(job *noteman.NoteProcessJob) {
+	now := time.Now()
+	job.Status = noteman.PROCESS_JOB_STATUS_COMPLETED
+	job.FinishedAt = &now
+	job.LastError = ""
+	if err := app.DB.Save(job).Error; err != nil {
+		app.ErrorLog.Println("failed to mark note process job completed: ", err)
+	}
+}
+
+func requeueNoteProcessJob(job *noteman.NoteProcessJob, note *noteman.Note, cause error) {
+	delay := time.Duration(job.Attempts*job.Attempts) * 10 * time.Second
+	nextRunAt := time.Now().Add(delay)
+	job.Status = noteman.PROCESS_JOB_STATUS_QUEUED
+	job.LastError = cause.Error()
+	job.NextRunAt = &nextRunAt
+	job.FinishedAt = nil
+
+	if err := app.DB.Save(job).Error; err != nil {
+		app.ErrorLog.Println("failed to requeue note process job: ", err)
+	}
+	if note != nil {
+		note.ProcessStatus = noteman.PROCESS_STATUS_QUEUED
+		if _, err := app.Notes.Save(note); err != nil {
+			app.ErrorLog.Println("failed to mark note queued after retry: ", err)
+		}
+		publishNoteProcessProgress(note, []int{job.RecipientUserID}, "queued", 5, "Алдаа гарсан тул дахин оролдохоор дараалалд орууллаа", cause.Error(), true)
+	}
+}
+
+func markNoteProcessJobFailed(job *noteman.NoteProcessJob, cause error) {
+	now := time.Now()
+	job.Status = noteman.PROCESS_JOB_STATUS_FAILED
+	job.FinishedAt = &now
+	if cause != nil {
+		job.LastError = cause.Error()
+	}
+	if err := app.DB.Save(job).Error; err != nil {
+		app.ErrorLog.Println("failed to mark note process job failed: ", err)
+	}
+}
+
+func isRetryableProcessingError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	retryableParts := []string{
+		"chat completion error",
+		"500",
+		"502",
+		"503",
+		"504",
+		"429",
+		"timeout",
+		"deadline",
+		"temporarily",
+		"connection",
+		"eof",
+	}
+	for _, part := range retryableParts {
+		if strings.Contains(message, part) {
+			return true
+		}
+	}
+	return false
+}
+
+func runLimited[T any](limiter chan struct{}, fn func() (T, error)) (T, error) {
+	limiter <- struct{}{}
+	defer func() { <-limiter }()
+	return fn()
+}
+
+func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 	var filePath string
 
 	note.ProcessStatus = noteman.PROCESS_STATUS_PROCESSING
@@ -50,7 +297,7 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) {
 		if err != nil {
 			app.ErrorLog.Println("failed to extract pages: ", err)
 			markNoteProcessingFailed(note, recipientUserIDs, "Файлын хуудсыг бэлтгэхэд алдаа гарлаа", err)
-			return
+			return err
 		}
 		defer os.Remove(tempFile)
 		filePath = tempFile
@@ -61,15 +308,17 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) {
 		err := fmt.Errorf("note has no source file")
 		app.ErrorLog.Println(err)
 		markNoteProcessingFailed(note, recipientUserIDs, "Боловсруулах файл олдсонгүй", err)
-		return
+		return err
 	}
 
 	publishNoteProcessProgress(note, recipientUserIDs, "ocr_started", 25, "Файлаас текст таньж байна", "", false)
-	rawText, err := app.OCRService.GetTextFromFile(filePath)
+	rawText, err := runLimited(ocrLimiter, func() (string, error) {
+		return app.OCRService.GetTextFromFile(filePath)
+	})
 	if err != nil {
 		app.ErrorLog.Println("OCR failed: ", err)
 		markNoteProcessingFailed(note, recipientUserIDs, "Файлаас текст танихад алдаа гарлаа", err)
-		return
+		return err
 	}
 
 	note.RawContent = rawText
@@ -79,11 +328,13 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) {
 	publishNoteProcessProgress(note, recipientUserIDs, "ocr_completed", 60, "Текст таньж дууслаа", "", false)
 
 	publishNoteProcessProgress(note, recipientUserIDs, "egune_started", 75, "Тэмдэглэлийн агуулга үүсгэж байна", "", false)
-	output, err := app.EguneService.GenerateNote(rawText)
+	output, err := runLimited(eguneLimiter, func() (*eguneapi.GeneratedOutput, error) {
+		return app.EguneService.GenerateNote(rawText)
+	})
 	if err != nil {
 		app.ErrorLog.Println("failed to generate note content: ", err)
 		markNoteProcessingFailed(note, recipientUserIDs, "Тэмдэглэлийн агуулга үүсгэхэд алдаа гарлаа", err)
-		return
+		return err
 	}
 
 	for _, quiz := range output.Quizzes {
@@ -105,10 +356,11 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) {
 	if _, err := app.Notes.Save(note); err != nil {
 		app.ErrorLog.Println("failed to save note: ", err)
 		markNoteProcessingFailed(note, recipientUserIDs, "Тэмдэглэл хадгалахад алдаа гарлаа", err)
-		return
+		return err
 	}
 
 	publishNoteProcessProgress(note, recipientUserIDs, "completed", 100, "Тэмдэглэл бэлэн боллоо", "", true)
+	return nil
 }
 
 func regenerateNoteQuizzes(note *noteman.Note, recipientUserIDs ...int) {
@@ -129,7 +381,9 @@ func regenerateNoteQuizzes(note *noteman.Note, recipientUserIDs ...int) {
 		return
 	}
 
-	output, err := app.EguneService.GenerateNote(content)
+	output, err := runLimited(eguneLimiter, func() (*eguneapi.GeneratedOutput, error) {
+		return app.EguneService.GenerateNote(content)
+	})
 	if err != nil {
 		app.ErrorLog.Println("failed to regenerate quizzes: ", err)
 		publishNoteQuizRegeneration(note, recipientUserIDs, "failed", "Тест дахин үүсгэхэд алдаа гарлаа", err.Error(), nil)

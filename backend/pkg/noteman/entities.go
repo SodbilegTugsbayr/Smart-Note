@@ -2,6 +2,7 @@ package noteman
 
 import (
 	"strings"
+	"time"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/entities"
 	"gorm.io/gorm"
@@ -11,9 +12,15 @@ const (
 	STATUS_IN_PROGRESS = "in_progress"
 	STATUS_COMPLETED   = "completed"
 
+	PROCESS_STATUS_QUEUED     = "queued"
 	PROCESS_STATUS_PROCESSING = "processing"
 	PROCESS_STATUS_COMPLETED  = "completed"
 	PROCESS_STATUS_FAILED     = "failed"
+
+	PROCESS_JOB_STATUS_QUEUED     = "queued"
+	PROCESS_JOB_STATUS_PROCESSING = "processing"
+	PROCESS_JOB_STATUS_COMPLETED  = "completed"
+	PROCESS_JOB_STATUS_FAILED     = "failed"
 )
 
 type Note struct {
@@ -50,4 +57,17 @@ type KeyConcept struct {
 type FlashCard struct {
 	Question string `json:"question"`
 	Answer   string `json:"answer"`
+}
+
+type NoteProcessJob struct {
+	entities.Model
+	NoteID          int        `json:"note_id" gorm:"index"`
+	RecipientUserID int        `json:"recipient_user_id"`
+	Status          string     `json:"status" gorm:"index"`
+	Attempts        int        `json:"attempts"`
+	MaxAttempts     int        `json:"max_attempts"`
+	LastError       string     `json:"last_error"`
+	NextRunAt       *time.Time `json:"next_run_at" gorm:"index"`
+	StartedAt       *time.Time `json:"started_at"`
+	FinishedAt      *time.Time `json:"finished_at"`
 }

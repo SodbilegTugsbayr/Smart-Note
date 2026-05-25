@@ -49,6 +49,7 @@ func Open(t testing.TB) *gorm.DB {
 		new(userman.User),
 		new(courseman.Course),
 		new(noteman.Note),
+		new(noteman.NoteProcessJob),
 		new(quizman.Quiz),
 		new(quizman.QuizResult),
 	); err != nil {
@@ -70,7 +71,7 @@ func Open(t testing.TB) *gorm.DB {
 func Reset(t testing.TB, db *gorm.DB) {
 	t.Helper()
 
-	if err := db.Exec("TRUNCATE TABLE quiz_results, quizzes, notes, courses, users RESTART IDENTITY CASCADE").Error; err != nil {
+	if err := db.Exec("TRUNCATE TABLE quiz_results, quizzes, note_process_jobs, notes, courses, users RESTART IDENTITY CASCADE").Error; err != nil {
 		t.Fatalf("reset test database: %v", err)
 	}
 }

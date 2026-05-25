@@ -147,7 +147,7 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 					EndPage:       s.EndPage,
 					FilePath:      savedCourse.FilePath,
 					Status:        noteman.STATUS_IN_PROGRESS,
-					ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
+					ProcessStatus: noteman.PROCESS_STATUS_QUEUED,
 				}
 
 				savedNote, err := app.Notes.Save(note)
@@ -156,7 +156,9 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				go processNote(savedNote, loggedUser.ID)
+				if err := enqueueNoteProcessing(savedNote.ID, loggedUser.ID); err != nil {
+					app.ErrorLog.Println("failed to enqueue note processing: ", err)
+				}
 			}
 		} else {
 			note = &noteman.Note{
@@ -165,7 +167,7 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 				IsFromBook:    false,
 				FilePath:      savedCourse.FilePath,
 				Status:        noteman.STATUS_IN_PROGRESS,
-				ProcessStatus: noteman.PROCESS_STATUS_PROCESSING,
+				ProcessStatus: noteman.PROCESS_STATUS_QUEUED,
 			}
 
 			savedNote, err := app.Notes.Save(note)
@@ -174,7 +176,9 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			go processNote(savedNote, loggedUser.ID)
+			if err := enqueueNoteProcessing(savedNote.ID, loggedUser.ID); err != nil {
+				app.ErrorLog.Println("failed to enqueue note processing: ", err)
+			}
 		}
 	}
 

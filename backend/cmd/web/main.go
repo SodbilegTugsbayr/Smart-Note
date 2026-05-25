@@ -29,11 +29,15 @@ func main() {
 		new(userman.User),
 		new(courseman.Course),
 		new(noteman.Note),
+		new(noteman.NoteProcessJob),
 		new(quizman.Quiz),
 		new(quizman.QuizResult),
 	))
 
 	addDefaultRecordsIfNotExist()
+	stopNoteWorkers := startNoteProcessingWorkers()
+	defer stopNoteWorkers()
+
 	srv := &http.Server{
 		Addr:         app.Config.Port,
 		ErrorLog:     app.ErrorLog,

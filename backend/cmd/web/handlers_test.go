@@ -575,6 +575,43 @@ func TestProcessNoteAndRegenerateQuizzesWithFakesAndTestDB(t *testing.T) {
 	}
 }
 
+func TestNoteProcessJobQueuesAndRetriesTransientFailures(t *testing.T) {
+	setupDBBackedRouter(t)
+	app.OCRService = fakeOCRClient{text: "raw OCR text"}
+	app.EguneService = fakeEguneClient{err: errors.New("chat completion error: 500 Internal Server Error")}
+
+	user, _, note := createProcessingFixture(t, "/tmp/source.pdf")
+	if err := enqueueNoteProcessing(note.ID, user.ID); err != nil {
+		t.Fatalf("enqueueNoteProcessing() error = %v", err)
+	}
+
+	claimed, err := claimNextNoteProcessJob()
+	if err != nil {
+		t.Fatalf("claimNextNoteProcessJob() error = %v", err)
+	}
+	if claimed == nil || claimed.Status != noteman.PROCESS_JOB_STATUS_PROCESSING || claimed.Attempts != 1 {
+		t.Fatalf("claimed job = %+v, want processing attempt 1", claimed)
+	}
+
+	processNoteJob(claimed)
+
+	var requeued noteman.NoteProcessJob
+	if err := app.DB.First(&requeued, claimed.ID).Error; err != nil {
+		t.Fatalf("get requeued job: %v", err)
+	}
+	if requeued.Status != noteman.PROCESS_JOB_STATUS_QUEUED || requeued.LastError == "" || requeued.NextRunAt == nil {
+		t.Fatalf("requeued job = %+v, want queued with retry metadata", requeued)
+	}
+
+	savedNote, err := app.Notes.GetByID(note.ID)
+	if err != nil {
+		t.Fatalf("get queued note: %v", err)
+	}
+	if savedNote.ProcessStatus != noteman.PROCESS_STATUS_QUEUED {
+		t.Fatalf("note status = %q, want queued", savedNote.ProcessStatus)
+	}
+}
+
 func TestValidateAndSaveFileToDiskRejectsUnsupportedFile(t *testing.T) {
 	fh := multipartFileHeader(t, "note.txt", []byte("plain text is not an uploadable study material"))
 

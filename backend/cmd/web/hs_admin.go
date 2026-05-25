@@ -71,6 +71,11 @@ func getAdminStats(w http.ResponseWriter, r *http.Request) {
 		oapi.ServerError(w, err)
 		return
 	}
+	queuedNotes, err := countWhere(&noteman.Note{}, "process_status = ?", noteman.PROCESS_STATUS_QUEUED)
+	if err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
 	failedNotes, err := countWhere(&noteman.Note{}, "process_status = ?", noteman.PROCESS_STATUS_FAILED)
 	if err != nil {
 		oapi.ServerError(w, err)
@@ -116,6 +121,7 @@ func getAdminStats(w http.ResponseWriter, r *http.Request) {
 		},
 		"notes": map[string]int{
 			"completed":  completedNotes,
+			"queued":     queuedNotes,
 			"processing": processingNotes,
 			"failed":     failedNotes,
 			"draft":      draftNotes,
@@ -194,14 +200,20 @@ func reprocessAdminNote(w http.ResponseWriter, r *http.Request) {
 		oapi.CustomError(w, http.StatusBadRequest, "Дахин боловсруулах эх файл алга")
 		return
 	}
+	if chosenNote.ProcessStatus == noteman.PROCESS_STATUS_PROCESSING || chosenNote.ProcessStatus == noteman.PROCESS_STATUS_QUEUED {
+		oapi.CustomError(w, http.StatusBadRequest, "Тэмдэглэл одоо боловсруулагдаж байна")
+		return
+	}
 
 	if err := resetGeneratedNoteContent(chosenNote); err != nil {
 		oapi.ServerError(w, err)
 		return
 	}
 
-	noteToProcess := *chosenNote
-	go processNote(&noteToProcess, loggedUser.ID)
+	if err := enqueueNoteProcessing(chosenNote.ID, loggedUser.ID); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
 
 	chosenNote.PrepareResponse()
 	oapi.SendResp(w, chosenNote)
@@ -223,7 +235,7 @@ func resetGeneratedNoteContent(note *noteman.Note) error {
 	note.KeyConcepts = nil
 	note.FlashCards = nil
 	note.Status = noteman.STATUS_IN_PROGRESS
-	note.ProcessStatus = noteman.PROCESS_STATUS_PROCESSING
+	note.ProcessStatus = noteman.PROCESS_STATUS_QUEUED
 
 	_, err = app.Notes.Save(note)
 	return err
@@ -260,7 +272,7 @@ func safeAdminOrder(value, fallback string) string {
 
 func safeNoteProcessStatus(value string) string {
 	switch strings.TrimSpace(value) {
-	case noteman.PROCESS_STATUS_COMPLETED, noteman.PROCESS_STATUS_PROCESSING, noteman.PROCESS_STATUS_FAILED:
+	case noteman.PROCESS_STATUS_QUEUED, noteman.PROCESS_STATUS_COMPLETED, noteman.PROCESS_STATUS_PROCESSING, noteman.PROCESS_STATUS_FAILED:
 		return strings.TrimSpace(value)
 	default:
 		return ""

@@ -44,7 +44,9 @@ func processCourseNotes(w http.ResponseWriter, r *http.Request) {
 
 	for _, note := range course.Notes {
 		if noteHasSourceFile(note) && (note.ProcessStatus != noteman.PROCESS_STATUS_COMPLETED || strings.TrimSpace(note.Summary) == "") {
-			processNote(note, loggedUser.ID)
+			if err := enqueueNoteProcessing(note.ID, loggedUser.ID); err != nil {
+				app.ErrorLog.Println("failed to enqueue note processing: ", err)
+			}
 		}
 	}
 
@@ -75,7 +77,9 @@ func generateCourseFlashcards(w http.ResponseWriter, r *http.Request) {
 
 	for _, note := range course.Notes {
 		if noteHasSourceFile(note) && len(note.FlashCards) == 0 {
-			processNote(note, loggedUser.ID)
+			if err := enqueueNoteProcessing(note.ID, loggedUser.ID); err != nil {
+				app.ErrorLog.Println("failed to enqueue note processing: ", err)
+			}
 		}
 	}
 

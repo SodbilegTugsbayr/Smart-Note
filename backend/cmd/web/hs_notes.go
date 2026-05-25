@@ -240,7 +240,7 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 	chosenNote.KeyConcepts = nil
 	chosenNote.FlashCards = nil
 	chosenNote.Status = noteman.STATUS_IN_PROGRESS
-	chosenNote.ProcessStatus = noteman.PROCESS_STATUS_PROCESSING
+	chosenNote.ProcessStatus = noteman.PROCESS_STATUS_QUEUED
 
 	savedNote, err := app.Notes.Save(chosenNote)
 	if err != nil {
@@ -253,8 +253,10 @@ func uploadNoteFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	noteToProcess := *savedNote
-	go processNote(&noteToProcess, loggedUser.ID)
+	if err := enqueueNoteProcessing(savedNote.ID, loggedUser.ID); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
 
 	savedNote.PrepareResponse()
 	oapi.SendRespStatus(w, http.StatusAccepted, savedNote)

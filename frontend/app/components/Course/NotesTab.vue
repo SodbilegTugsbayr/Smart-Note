@@ -21,7 +21,9 @@ const content = ref("")
 const activeProgress = computed(() =>
   activeNote.value ? progressByNoteId.value[activeNote.value.id] : null,
 )
-const isActiveNoteProcessing = computed(() => activeNote.value?.process_status === "processing")
+const isActiveNoteProcessing = computed(() =>
+  ["queued", "processing"].includes(activeNote.value?.process_status),
+)
 const isActiveProgressRunning = computed(
   () => activeProgress.value && !["completed", "failed"].includes(activeProgress.value.stage),
 )
@@ -201,6 +203,7 @@ function handleFileAttach() {
 
 function noteStatusText(note) {
   if (!note) return ""
+  if (note.process_status === "queued") return "Дараалалд"
   if (note.process_status === "processing") return "Боловсруулж байна"
   if (note.process_status === "failed") return "Алдаа"
   if (note.status === "completed") return "Дууссан"
@@ -209,6 +212,9 @@ function noteStatusText(note) {
 }
 
 function noteStatusClass(note) {
+  if (note?.process_status === "queued") {
+    return "bg-slate-100 text-slate-700 border border-slate-200"
+  }
   if (note?.process_status === "processing") {
     return "bg-indigo-500/10 text-indigo-700 border border-indigo-500/20"
   }
