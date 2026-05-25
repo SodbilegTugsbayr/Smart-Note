@@ -5,6 +5,7 @@ const user = useUser()
 
 const sidebarOpen = ref(false)
 const activeNoteId = ref(null)
+const activeTab = ref("notes")
 const publishing = ref(false)
 const publishError = ref("")
 
@@ -184,7 +185,7 @@ function selectNote(id) {
       <div class="flex-1 overflow-y-auto">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           <!-- Tabs -->
-          <Tabs default-value="notes" class="space-y-4">
+          <Tabs v-model="activeTab" default-value="notes" class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <TabsList class="bg-slate-100 border border-slate-200 p-1 rounded-xl">
                 <TabsTrigger
@@ -215,7 +216,16 @@ function selectNote(id) {
                 </TabsTrigger>
               </TabsList>
 
-              <div id="course-notes-actions" class="flex items-center justify-end gap-2" />
+              <div
+                v-show="activeTab === 'notes'"
+                id="course-notes-actions"
+                class="flex items-center justify-end gap-2"
+              />
+              <div
+                v-show="activeTab === 'flashcards'"
+                id="course-flashcards-actions"
+                class="flex items-center justify-end gap-2"
+              />
             </div>
 
             <TabsContent value="notes">

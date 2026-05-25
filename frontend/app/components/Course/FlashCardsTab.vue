@@ -69,25 +69,20 @@ async function handleAdd() {
 
 <template>
   <div class="space-y-4">
-    <div v-if="!readonly" class="flex items-center gap-2 flex-wrap">
-      <button
-        @click="handleAIGenerate"
-        :disabled="generating || !activeNote"
-        class="gradient-indigo text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
-      >
-        <Loader2Icon v-if="generating" class="w-4 h-4 animate-spin" />
-        <SparklesIcon v-else class="w-4 h-4" />
-        AI-аар үүсгэх
-      </button>
-      <button
-        @click="showAdd = !showAdd"
-        :disabled="!activeNote"
-        class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
-      >
-        <PlusIcon class="w-4 h-4" />
-        Нэмэх
-      </button>
-    </div>
+    <ClientOnly>
+      <Teleport to="#course-flashcards-actions">
+        <div v-if="!readonly" class="flex flex-wrap items-center justify-end gap-2">
+          <button
+            @click="showAdd = !showAdd"
+            :disabled="!activeNote"
+            class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
+          >
+            <PlusIcon class="w-4 h-4" />
+            Нэмэх
+          </button>
+        </div>
+      </Teleport>
+    </ClientOnly>
 
     <div v-if="showAdd && !readonly" class="glass-card rounded-xl p-4 space-y-3">
       <Input
