@@ -267,6 +267,128 @@ func updateCourse(w http.ResponseWriter, r *http.Request) {
 	oapi.SendResp(w, savedCourse)
 }
 
+func uploadCourseBook(w http.ResponseWriter, r *http.Request) {
+	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
+	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
+	if !canAccessCourse(loggedUser, chosenCourse) {
+		oapi.Forbidden(w)
+		return
+	}
+	if chosenCourse.HasBook || strings.TrimSpace(chosenCourse.FilePath) != "" {
+		oapi.CustomError(w, http.StatusBadRequest, "Course already has a book")
+		return
+	}
+	if !parseLimitedMultipartForm(w, r) {
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		oapi.CustomError(w, http.StatusBadRequest, "File is required")
+		return
+	}
+	_ = file.Close()
+
+	courseDir := strings.TrimSpace(chosenCourse.ContainerPath)
+	if courseDir == "" {
+		courseDir = filepath.Join(app.Config.FilePath, uuid.NewString())
+		courseDir, _ = filepath.Abs(courseDir)
+		chosenCourse.ContainerPath = courseDir
+	}
+
+	bookDir := filepath.Join(courseDir, "book")
+	if err := os.MkdirAll(bookDir, 0755); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+
+	path, err := validateAndSaveFileToDisk(header, bookDir)
+	if err != nil {
+		oapi.CustomError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var sections []*courseman.Section
+	sectionsRaw := strings.TrimSpace(r.FormValue("sections"))
+	if sectionsRaw != "" {
+		if err := json.Unmarshal([]byte(sectionsRaw), &sections); err != nil {
+			_ = os.Remove(path)
+			oapi.CustomError(w, http.StatusBadRequest, "Invalid sections format")
+			return
+		}
+	}
+	for i := range sections {
+		sections[i].SectionName = common.CleanString(sections[i].SectionName)
+	}
+
+	chosenCourse.FilePath = path
+	chosenCourse.HasBook = true
+	chosenCourse.Sections = sections
+	if _, err := app.Courses.Save(chosenCourse); err != nil {
+		_ = os.Remove(path)
+		oapi.ServerError(w, err)
+		return
+	}
+
+	if err := createBookNotes(chosenCourse, sections, loggedUser.ID); err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+
+	refreshed, err := app.Courses.GetByID(chosenCourse.ID, "Notes")
+	if err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
+	oapi.SendResp(w, refreshed)
+}
+
+func createBookNotes(course *courseman.Course, sections []*courseman.Section, userID int) error {
+	if course == nil || strings.TrimSpace(course.FilePath) == "" {
+		return nil
+	}
+
+	if len(sections) > 0 {
+		for _, section := range sections {
+			note := &noteman.Note{
+				CourseID:      course.ID,
+				Title:         section.SectionName,
+				IsFromBook:    true,
+				StartPage:     section.StartPage,
+				EndPage:       section.EndPage,
+				FilePath:      course.FilePath,
+				Status:        noteman.STATUS_IN_PROGRESS,
+				ProcessStatus: noteman.PROCESS_STATUS_QUEUED,
+			}
+			savedNote, err := app.Notes.Save(note)
+			if err != nil {
+				return err
+			}
+			if err := enqueueNoteProcessing(savedNote.ID, userID); err != nil {
+				app.ErrorLog.Println("failed to enqueue note processing: ", err)
+			}
+		}
+		return nil
+	}
+
+	note := &noteman.Note{
+		CourseID:      course.ID,
+		Title:         course.Title,
+		IsFromBook:    false,
+		FilePath:      course.FilePath,
+		Status:        noteman.STATUS_IN_PROGRESS,
+		ProcessStatus: noteman.PROCESS_STATUS_QUEUED,
+	}
+	savedNote, err := app.Notes.Save(note)
+	if err != nil {
+		return err
+	}
+	if err := enqueueNoteProcessing(savedNote.ID, userID); err != nil {
+		app.ErrorLog.Println("failed to enqueue note processing: ", err)
+	}
+	return nil
+}
+
 func deleteCourse(w http.ResponseWriter, r *http.Request) {
 	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)

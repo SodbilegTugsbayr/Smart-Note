@@ -58,6 +58,7 @@ func routes() http.Handler {
 				r.Patch("/", updateCourse)
 				r.Delete("/", deleteCourse)
 				r.Post("/notes", createCourseNote)
+				r.Post("/book", uploadCourseBook)
 			})
 		})
 
@@ -67,6 +68,7 @@ func routes() http.Handler {
 				r.Patch("/", updateCourse)
 				r.Delete("/", deleteCourse)
 				r.Post("/notes", createCourseNote)
+				r.Post("/book", uploadCourseBook)
 			})
 		})
 

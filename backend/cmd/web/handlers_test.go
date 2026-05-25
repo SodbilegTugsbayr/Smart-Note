@@ -1204,6 +1204,32 @@ func TestSaveCourseValidationAndWithBookFile(t *testing.T) {
 	}
 }
 
+func TestUploadCourseBookForExistingCourse(t *testing.T) {
+	handler := setupDBBackedRouter(t)
+	cookies, _ := signupForHandlerTest(t, handler, "course-book-uploader@example.com")
+	course := createCourseForRouteTest(t, handler, cookies, "Blank", "Blank course")
+
+	upload := doMultipartFileRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/course/%d/book", course.ID), "file", "book.png", minimalPNG(), map[string]string{
+		"sections": `[{"section_name":"Intro","start_page":1,"end_page":5}]`,
+	}, cookies)
+	if upload.Code != http.StatusOK {
+		t.Fatalf("upload book status = %d, body = %q, want 200", upload.Code, upload.Body.String())
+	}
+
+	var updated courseman.Course
+	if err := json.NewDecoder(upload.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode updated course: %v", err)
+	}
+	if !updated.HasBook || len(updated.Notes) != 1 || updated.Notes[0].ProcessStatus != noteman.PROCESS_STATUS_QUEUED {
+		t.Fatalf("updated course = %+v, want one queued book note", updated)
+	}
+
+	again := doMultipartFileRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/course/%d/book", course.ID), "file", "book.png", minimalPNG(), nil, cookies)
+	if again.Code != http.StatusBadRequest {
+		t.Fatalf("upload existing book status = %d, want 400", again.Code)
+	}
+}
+
 func TestUpdateCourseAllFieldBranches(t *testing.T) {
 	handler := setupDBBackedRouter(t)
 	cookies, _ := signupForHandlerTest(t, handler, "course-updater@example.com")
