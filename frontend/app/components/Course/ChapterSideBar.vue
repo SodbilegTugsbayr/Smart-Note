@@ -3,6 +3,7 @@ const props = defineProps({
   courseId: { type: [String, Number], required: true },
   notes: { type: Array, default: () => [] },
   activeNoteId: { type: [String, Number], default: null },
+  readonly: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(["note-select", "note-created", "note-updated", "note-deleted"])
@@ -20,6 +21,8 @@ const sortedNotes = computed(() =>
 )
 
 async function handleAddNote() {
+  if (props.readonly) return
+
   adding.value = true
   errorMessage.value = ""
 
@@ -39,6 +42,8 @@ async function handleAddNote() {
 }
 
 function openEditNote(note) {
+  if (props.readonly) return
+
   editingNote.value = note
   editTitle.value = note.title || ""
   errorMessage.value = ""
@@ -53,7 +58,7 @@ function handleEditOpenChange(open) {
 }
 
 async function handleSaveEdit() {
-  if (!editingNote.value || savingEdit.value) return
+  if (props.readonly || !editingNote.value || savingEdit.value) return
 
   const title = editTitle.value.trim()
   if (!title) {
@@ -79,6 +84,8 @@ async function handleSaveEdit() {
 }
 
 function openDeleteNote(note) {
+  if (props.readonly) return
+
   deletingNote.value = note
   errorMessage.value = ""
 }
@@ -91,7 +98,7 @@ function handleDeleteOpenChange(open) {
 }
 
 async function handleDeleteNote() {
-  if (!deletingNote.value || deleting.value) return
+  if (props.readonly || !deletingNote.value || deleting.value) return
 
   deleting.value = true
   errorMessage.value = ""
@@ -114,6 +121,7 @@ async function handleDeleteNote() {
         Тэмдэглэл
       </p>
       <button
+        v-if="!readonly"
         @click="handleAddNote"
         :disabled="adding"
         class="w-7 h-7 rounded-lg text-muted-foreground hover:text-indigo-700 hover:bg-indigo-500/10 transition-colors flex items-center justify-center disabled:opacity-50"
@@ -149,7 +157,7 @@ async function handleDeleteNote() {
           <span class="truncate flex-1 text-xs">{{ note.title || "Гарчиггүй тэмдэглэл" }}</span>
         </button>
 
-        <DropdownMenu>
+        <DropdownMenu v-if="!readonly">
           <DropdownMenuTrigger as-child>
             <button
               class="w-7 h-7 mr-1 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/70 transition-colors"

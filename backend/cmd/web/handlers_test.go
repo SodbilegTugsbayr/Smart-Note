@@ -53,6 +53,18 @@ func TestCanAccessCourseAllowsOwnerAndAdminOnly(t *testing.T) {
 	}
 }
 
+func TestCanViewCourseAllowsPublicCourse(t *testing.T) {
+	course := &courseman.Course{UserID: 7, IsPublic: true}
+	otherUser := &userman.User{Model: entities.Model{ID: 42}, Role: userman.ROLE_USER}
+
+	if !canViewCourse(otherUser, course) {
+		t.Fatal("canViewCourse() = false, want true for public course")
+	}
+	if canAccessCourse(otherUser, course) {
+		t.Fatal("canAccessCourse() = true, want false for public course mutation")
+	}
+}
+
 func TestPublicQuizResponsesHideCorrectAnswersAndSkipNil(t *testing.T) {
 	responses := publicQuizResponses([]*quizman.Quiz{
 		{
@@ -1202,6 +1214,11 @@ func TestUpdateCourseAllFieldBranches(t *testing.T) {
 	}
 
 	intruder, _ := signupForHandlerTest(t, handler, "course-intruder-update@example.com")
+	publicGet := doRequest(t, handler, http.MethodGet, fmt.Sprintf("/api/course/%d/", course.ID), nil, "", intruder)
+	if publicGet.Code != http.StatusOK {
+		t.Fatalf("intruder public get status = %d, body = %q, want 200", publicGet.Code, publicGet.Body.String())
+	}
+
 	forbidden := doRequest(t, handler, http.MethodPatch, fmt.Sprintf("/api/course/%d/", course.ID), updateCoursePayload{Title: &newTitle}, "application/json", intruder)
 	if forbidden.Code != http.StatusForbidden {
 		t.Fatalf("intruder update status = %d, want 403", forbidden.Code)

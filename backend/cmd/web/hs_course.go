@@ -184,7 +184,7 @@ func saveCourse(w http.ResponseWriter, r *http.Request) {
 func getCourse(w http.ResponseWriter, r *http.Request) {
 	chosenCourse := r.Context().Value(app.ContextKeyChosenCourse).(*courseman.Course)
 	loggedUser := r.Context().Value(app.ContextKeyAuthUser).(*userman.User)
-	if !canAccessCourse(loggedUser, chosenCourse) {
+	if !canViewCourse(loggedUser, chosenCourse) {
 		oapi.Forbidden(w)
 		return
 	}
@@ -293,6 +293,10 @@ func deleteCourse(w http.ResponseWriter, r *http.Request) {
 
 func canAccessCourse(user *userman.User, course *courseman.Course) bool {
 	return user.Role == userman.ROLE_ADMIN || course.UserID == user.ID
+}
+
+func canViewCourse(user *userman.User, course *courseman.Course) bool {
+	return canAccessCourse(user, course) || course.IsPublic
 }
 
 func validateAndSaveFileToDisk(fh *multipart.FileHeader, dir string) (string, error) {

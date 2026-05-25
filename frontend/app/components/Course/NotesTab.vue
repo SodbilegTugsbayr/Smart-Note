@@ -2,6 +2,7 @@
 const props = defineProps({
   course: { type: Object, required: true },
   activeNoteId: { type: [String, Number], default: null },
+  readonly: { type: Boolean, default: false },
 })
 const emit = defineEmits(["update"])
 
@@ -38,6 +39,7 @@ const displayProgressMessage = computed(() => {
 })
 const canAttachFile = computed(
   () =>
+    !props.readonly &&
     activeNote.value &&
     !activeNote.value.is_from_book &&
     !activeNote.value.has_file &&
@@ -125,7 +127,7 @@ function mergeNote(updatedNote) {
 }
 
 async function handleSave() {
-  if (!activeNote.value) return
+  if (props.readonly || !activeNote.value) return
   const cleanTitle = title.value.trim()
   if (!cleanTitle) {
     errorMessage.value = "Гарчиг оруулна уу"
@@ -150,7 +152,7 @@ async function handleSave() {
 }
 
 function handleFileAttach() {
-  if (!canAttachFile.value || uploading.value) return
+  if (props.readonly || !canAttachFile.value || uploading.value) return
 
   const input = document.createElement("input")
   input.type = "file"
@@ -227,7 +229,7 @@ function noteStatusClass(note) {
   <div class="space-y-4">
     <ClientOnly>
       <Teleport to="#course-notes-actions">
-        <div class="flex flex-wrap items-center justify-end gap-2">
+        <div v-if="!readonly" class="flex flex-wrap items-center justify-end gap-2">
           <button
             v-if="canAttachFile"
             @click="handleFileAttach"
@@ -295,10 +297,13 @@ function noteStatusClass(note) {
         <textarea
           v-else
           v-model="content"
-          :readonly="showProcessProgress"
+          :readonly="readonly || showProcessProgress"
           placeholder="Тэмдэглэл бичих..."
           class="block w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/20 min-h-[240px] resize-y transition-colors"
-          :class="showProcessProgress ? 'pb-28 cursor-progress' : ''"
+          :class="{
+            'pb-28 cursor-progress': showProcessProgress,
+            'cursor-default resize-none focus:ring-0': readonly,
+          }"
         />
       </div>
 

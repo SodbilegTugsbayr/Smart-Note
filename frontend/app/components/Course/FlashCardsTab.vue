@@ -2,6 +2,7 @@
 const props = defineProps({
   course: { type: Object, required: true },
   activeNoteId: { type: [String, Number], default: null },
+  readonly: { type: Boolean, default: false },
 })
 const emit = defineEmits(["update"])
 
@@ -32,7 +33,7 @@ watch(
 )
 
 async function handleAIGenerate() {
-  if (!activeNote.value) return
+  if (props.readonly || !activeNote.value) return
   generating.value = true
   try {
     const updatedCourse = await $fetch("/api/ai/generate-flashcards", {
@@ -46,7 +47,7 @@ async function handleAIGenerate() {
 }
 
 async function handleAdd() {
-  if (!activeNote.value || !newTerm.value.trim() || !newDef.value.trim()) return
+  if (props.readonly || !activeNote.value || !newTerm.value.trim() || !newDef.value.trim()) return
   const savedNote = await $fetch("/api/flashcards", {
     method: "POST",
     body: {
@@ -68,7 +69,7 @@ async function handleAdd() {
 
 <template>
   <div class="space-y-4">
-    <div class="flex items-center gap-2 flex-wrap">
+    <div v-if="!readonly" class="flex items-center gap-2 flex-wrap">
       <button
         @click="handleAIGenerate"
         :disabled="generating || !activeNote"
@@ -88,7 +89,7 @@ async function handleAdd() {
       </button>
     </div>
 
-    <div v-if="showAdd" class="glass-card rounded-xl p-4 space-y-3">
+    <div v-if="showAdd && !readonly" class="glass-card rounded-xl p-4 space-y-3">
       <Input
         v-model="newTerm"
         placeholder="Нэр томьёо"
@@ -114,7 +115,11 @@ async function handleAdd() {
 
     <div v-else-if="cards.length === 0 && !generating" class="text-center py-12">
       <p class="text-muted-foreground text-sm">
-        Энэ тэмдэглэлд флаш карт байхгүй. AI-аар үүсгэх товчийг дарна уу.
+        {{
+          readonly
+            ? "Энэ тэмдэглэлд флаш карт байхгүй."
+            : "Энэ тэмдэглэлд флаш карт байхгүй. AI-аар үүсгэх товчийг дарна уу."
+        }}
       </p>
     </div>
 

@@ -1,15 +1,22 @@
 <script setup>
 const route = useRoute()
 const courseId = route.params.id
+const user = useUser()
 
 const sidebarOpen = ref(false)
 const activeNoteId = ref(null)
+const publishing = ref(false)
+const publishError = ref("")
 
 const { data: course, refresh } = await useFetch(`/api/course/${courseId}`)
 
 const notes = computed(() =>
   [...(course.value?.notes || [])].sort((a, b) => Number(a.id || 0) - Number(b.id || 0)),
 )
+const canEditCourse = computed(
+  () => user.value?.role === "admin" || Number(course.value?.user_id) === Number(user.value?.id),
+)
+const isReadOnly = computed(() => !canEditCourse.value)
 
 watch(
   notes,
@@ -27,13 +34,32 @@ watch(
   { immediate: true },
 )
 
-async function togglePublic() {
-  const newVal = !course.value.is_public
-  await $fetch(`/api/courses/${courseId}`, {
-    method: "PATCH",
-    body: { is_public: newVal },
-  })
-  course.value.is_public = newVal
+async function togglePublic(checked) {
+  if (!course.value || publishing.value || isReadOnly.value) return
+
+  const previousValue = !!course.value.is_public
+  const nextValue = !!checked
+
+  publishing.value = true
+  publishError.value = ""
+  course.value.is_public = nextValue
+
+  try {
+    const savedCourse = await $fetch(`/api/course/${courseId}/`, {
+      method: "PATCH",
+      body: { is_public: nextValue },
+    })
+    course.value = {
+      ...course.value,
+      ...savedCourse,
+      notes: savedCourse.notes || course.value.notes || [],
+    }
+  } catch (err) {
+    course.value.is_public = previousValue
+    publishError.value = err?.data?.message || err?.data || "Нийтлэх төлөв шинэчлэхэд алдаа гарлаа"
+  } finally {
+    publishing.value = false
+  }
 }
 
 function copyLink() {
@@ -99,12 +125,17 @@ function selectNote(id) {
           </div>
 
           <div class="flex shrink-0 items-center gap-3 self-center">
-            <div class="flex items-center gap-2">
+            <div v-if="canEditCourse" class="flex items-center gap-2">
               <GlobeIcon class="h-4 w-4 shrink-0 text-muted-foreground" />
 
               <span class="text-xs leading-none text-muted-foreground"> Нийтлэх </span>
 
-              <Switch :checked="course.is_public" @update:checked="togglePublic" class="shrink-0" />
+              <Switch
+                :model-value="course.is_public"
+                :disabled="publishing"
+                @update:model-value="togglePublic"
+                class="shrink-0"
+              />
             </div>
 
             <button
@@ -116,6 +147,10 @@ function selectNote(id) {
             </button>
           </div>
         </div>
+
+        <p v-if="publishError" class="pb-4 text-right text-xs text-red-600">
+          {{ publishError }}
+        </p>
       </div>
     </header>
 
@@ -137,6 +172,7 @@ function selectNote(id) {
           :course-id="course.id"
           :notes="notes"
           :active-note-id="activeNoteId"
+          :readonly="isReadOnly"
           @note-select="selectNote"
           @note-created="handleNoteCreated"
           @note-updated="handleNoteUpdated"
@@ -164,12 +200,14 @@ function selectNote(id) {
                   Флаш карт
                 </TabsTrigger>
                 <TabsTrigger
+                  v-if="!isReadOnly"
                   value="quiz"
                   class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
                 >
                   Тест
                 </TabsTrigger>
                 <TabsTrigger
+                  v-if="!isReadOnly"
                   value="chat"
                   class="data-[state=active]:bg-white data-[state=active]:text-indigo-700 rounded-lg text-sm"
                 >
@@ -184,6 +222,7 @@ function selectNote(id) {
               <CourseNotesTab
                 :course="course"
                 :active-note-id="activeNoteId"
+                :readonly="isReadOnly"
                 @update="handleUpdate"
               />
             </TabsContent>
@@ -191,17 +230,18 @@ function selectNote(id) {
               <CourseFlashCardsTab
                 :course="course"
                 :active-note-id="activeNoteId"
+                :readonly="isReadOnly"
                 @update="handleUpdate"
               />
             </TabsContent>
-            <TabsContent value="quiz">
+            <TabsContent v-if="!isReadOnly" value="quiz">
               <CourseQuizTab
                 :course="course"
                 :active-note-id="activeNoteId"
                 @update="handleUpdate"
               />
             </TabsContent>
-            <TabsContent value="chat">
+            <TabsContent v-if="!isReadOnly" value="chat">
               <CourseChatTab :course="course" />
             </TabsContent>
           </Tabs>
