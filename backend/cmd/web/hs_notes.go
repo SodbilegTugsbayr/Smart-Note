@@ -281,16 +281,21 @@ func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {
 		oapi.ServerError(w, err)
 		return
 	}
-	latestResult, err := app.Quizzes.GetLatestResult(loggedUser.ID, chosenNote.ID)
+	results, err := app.Quizzes.GetResults(loggedUser.ID, chosenNote.ID)
 	if err != nil {
 		oapi.ServerError(w, err)
 		return
+	}
+	var latestResult *quizman.QuizResult
+	if len(results) > 0 {
+		latestResult = results[0]
 	}
 
 	oapi.SendResp(w, map[string]interface{}{
 		"items":         publicQuizResponses(quizzes),
 		"total":         total,
 		"latest_result": latestResult,
+		"results":       results,
 	})
 }
 
@@ -378,6 +383,7 @@ func submitNoteQuiz(w http.ResponseWriter, r *http.Request) {
 		Total:      total,
 		Percentage: percentage,
 		Passed:     passed,
+		Answers:    quizResultAnswers(answerResults),
 	})
 	if err != nil {
 		oapi.ServerError(w, err)
@@ -427,6 +433,21 @@ func submitNoteQuiz(w http.ResponseWriter, r *http.Request) {
 	go regenerateNoteQuizzes(&noteToRegenerate, loggedUser.ID)
 
 	oapi.SendRespStatus(w, http.StatusAccepted, resp)
+}
+
+func quizResultAnswers(results []quizAnswerResult) []quizman.QuizResultAnswer {
+	answers := make([]quizman.QuizResultAnswer, 0, len(results))
+	for _, result := range results {
+		answers = append(answers, quizman.QuizResultAnswer{
+			QuizID:         result.QuizID,
+			Question:       result.Question,
+			Options:        result.Options,
+			SelectedAnswer: result.SelectedAnswer,
+			CorrectAnswer:  result.CorrectAnswer,
+			Correct:        result.Correct,
+		})
+	}
+	return answers
 }
 
 func publicQuizResponses(quizzes []*quizman.Quiz) []quizResponse {

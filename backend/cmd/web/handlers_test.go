@@ -1320,6 +1320,9 @@ func TestSubmitNoteQuizValidationAndScoring(t *testing.T) {
 	if getQuizzes.Code != http.StatusOK {
 		t.Fatalf("get quizzes status = %d, want 200", getQuizzes.Code)
 	}
+	if !strings.Contains(getQuizzes.Body.String(), `"results"`) || !strings.Contains(getQuizzes.Body.String(), `"correct_answer"`) {
+		t.Fatalf("get quizzes body = %q, want saved quiz result details", getQuizzes.Body.String())
+	}
 
 	fail := doRequest(t, handler, http.MethodPost, fmt.Sprintf("/api/notes/%d/quizzes/submit", note.ID), quizSubmissionPayload{
 		Answers: []quizSubmissionAnswer{{QuizID: q1.ID, Answer: "B"}, {QuizID: q2.ID, Answer: "A"}},

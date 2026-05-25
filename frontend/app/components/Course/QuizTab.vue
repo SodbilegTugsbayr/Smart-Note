@@ -22,6 +22,8 @@ const resultScore = ref(0)
 const resultTotal = ref(0)
 const resultPercentage = ref(0)
 const latestResult = ref(null)
+const resultHistory = ref([])
+const expandedResultId = ref(null)
 const testStarted = ref(false)
 
 const activeNote = computed(() => {
@@ -80,6 +82,8 @@ async function fetchQuizzes(noteId) {
   resetQuizState(false)
   quizzes.value = []
   latestResult.value = null
+  resultHistory.value = []
+  expandedResultId.value = null
   errorMessage.value = ""
   resultMessage.value = ""
   regenerating.value = false
@@ -92,6 +96,7 @@ async function fetchQuizzes(noteId) {
     if (String(props.activeNoteId) !== String(noteId)) return
     quizzes.value = Array.isArray(result) ? result : result?.items || []
     latestResult.value = Array.isArray(result) ? null : result?.latest_result || null
+    resultHistory.value = Array.isArray(result) ? [] : result?.results || []
   } catch (err) {
     if (String(props.activeNoteId) === String(noteId)) {
       errorMessage.value = err?.data?.message || "Тест уншихад алдаа гарлаа"
@@ -104,7 +109,6 @@ async function fetchQuizzes(noteId) {
 }
 
 function handleAnswer(answer) {
-  if (showResult.value) return
   selectedAnswer.value = answer
   showResult.value = true
   const nextAnswer = {
@@ -183,6 +187,13 @@ async function submitQuizResult() {
     resultTotal.value = Number(result?.total || resultAnswers.value.length || quizzes.value.length)
     resultPercentage.value = Number(result?.percentage || 0)
     latestResult.value = result?.result || latestResult.value
+    if (result?.result) {
+      resultHistory.value = [
+        result.result,
+        ...resultHistory.value.filter((item) => item.id !== result.result.id),
+      ]
+      expandedResultId.value = result.result.id
+    }
     quizDone.value = true
     mergeQuizSubmission(result)
   } catch (err) {
@@ -233,7 +244,16 @@ function optionClass(option) {
   if (option === selectedAnswer.value) {
     return "border-indigo-500/40 bg-indigo-500/10 text-indigo-800"
   }
-  return "opacity-70"
+  return "hover:border-indigo-500/30 opacity-70"
+}
+
+function formatDate(value) {
+  if (!value) return ""
+  return new Date(value).toLocaleString()
+}
+
+function toggleResultDetails(result) {
+  expandedResultId.value = expandedResultId.value === result.id ? null : result.id
 }
 </script>
 
@@ -290,23 +310,93 @@ function optionClass(option) {
         </p>
       </div>
 
-      <div v-if="latestResult" class="rounded-xl border border-slate-200 bg-white/70 px-4 py-3">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Өмнөх үр дүн
-            </p>
-            <p class="mt-1 text-sm text-foreground">
-              {{ latestResult.score }}/{{ latestResult.total }} ({{ latestResult.percentage }}%)
-            </p>
+      <div v-if="resultHistory.length" class="space-y-3">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Өмнөх үр дүнгүүд
+        </p>
+        <div
+          v-for="result in resultHistory"
+          :key="result.id"
+          class="rounded-xl border border-slate-200 bg-white/70 px-4 py-3"
+        >
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-sm font-medium text-foreground">
+                {{ result.score }}/{{ result.total }} ({{ result.percentage }}%)
+              </p>
+              <p class="mt-0.5 text-xs text-muted-foreground">
+                {{ formatDate(result.created_at) }}
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span
+                class="rounded-full px-2.5 py-1 text-xs font-medium"
+                :class="
+                  result.passed
+                    ? 'bg-teal-500/10 text-teal-700'
+                    : 'bg-amber-500/10 text-amber-700'
+                "
+              >
+                {{ result.passed ? "Давсан" : "Дахин оролдох" }}
+              </span>
+              <button
+                type="button"
+                class="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-slate-100 hover:text-foreground"
+                @click="toggleResultDetails(result)"
+              >
+                {{ expandedResultId === result.id ? "Хураах" : "Дэлгэрэнгүй" }}
+              </button>
+            </div>
           </div>
-          <span
-            v-if="latestResult.passed"
-            class="rounded-full px-2.5 py-1 text-xs font-medium"
-            :class="'bg-teal-500/10 text-teal-700'"
+
+          <div
+            v-if="expandedResultId === result.id && result.answers?.length"
+            class="mt-4 space-y-3 text-left"
           >
-            {{ "Давсан" }}
-          </span>
+            <div
+              v-for="(item, idx) in result.answers"
+              :key="item.quiz_id"
+              class="rounded-xl border px-4 py-3"
+              :class="
+                item.correct
+                  ? 'border-teal-500/30 bg-teal-500/5'
+                  : 'border-red-500/30 bg-red-500/5'
+              "
+            >
+              <div class="flex items-start justify-between gap-3">
+                <p class="text-sm font-medium text-foreground">
+                  {{ idx + 1 }}. {{ item.question }}
+                </p>
+                <span
+                  class="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+                  :class="
+                    item.correct ? 'bg-teal-500/10 text-teal-700' : 'bg-red-500/10 text-red-700'
+                  "
+                >
+                  {{ item.correct ? "Зөв" : "Буруу" }}
+                </span>
+              </div>
+              <div class="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                <div class="rounded-lg bg-white/70 px-3 py-2">
+                  <p class="text-xs text-muted-foreground">Таны хариулт</p>
+                  <p :class="item.correct ? 'text-teal-700' : 'text-red-700'">
+                    {{ item.selected_answer || "Хариулаагүй" }}
+                  </p>
+                </div>
+                <div class="rounded-lg bg-white/70 px-3 py-2">
+                  <p class="text-xs text-muted-foreground">Зөв хариулт</p>
+                  <p class="text-teal-700">{{ item.correct_answer }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p
+            v-else-if="expandedResultId === result.id"
+            class="mt-3 text-xs text-muted-foreground"
+          >
+            Энэ хуучин үр дүнд дэлгэрэнгүй хариулт хадгалагдаагүй байна.
+          </p>
         </div>
       </div>
 
@@ -416,7 +506,7 @@ function optionClass(option) {
           v-for="option in currentQuiz.options"
           :key="option"
           @click="handleAnswer(option)"
-          :disabled="showResult"
+          :disabled="submitting || regenerating"
           class="glass-card glass-card-hover px-4 py-3 rounded-xl text-sm text-left transition-all disabled:cursor-default"
           :class="optionClass(option)"
         >

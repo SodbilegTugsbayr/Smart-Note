@@ -130,6 +130,14 @@ func (s *Service) GetLatestResult(userID, noteID int) (*QuizResult, error) {
 	return &result, nil
 }
 
+func (s *Service) GetResults(userID, noteID int) ([]*QuizResult, error) {
+	var results []*QuizResult
+	if err := s.db.Where("user_id = ? AND note_id = ?", userID, noteID).Order("created_at desc, id desc").Find(&results).Error; err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
 func (s *Service) Delete(id int) error {
 	return s.db.Delete(new(Quiz), id).Error
 }
