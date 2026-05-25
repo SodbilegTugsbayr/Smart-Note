@@ -194,10 +194,6 @@ func reprocessAdminNote(w http.ResponseWriter, r *http.Request) {
 		oapi.CustomError(w, http.StatusBadRequest, "Дахин боловсруулах эх файл алга")
 		return
 	}
-	if chosenNote.ProcessStatus == noteman.PROCESS_STATUS_PROCESSING {
-		oapi.CustomError(w, http.StatusBadRequest, "Тэмдэглэл аль хэдийн боловсруулагдаж байна")
-		return
-	}
 
 	if err := resetGeneratedNoteContent(chosenNote); err != nil {
 		oapi.ServerError(w, err)

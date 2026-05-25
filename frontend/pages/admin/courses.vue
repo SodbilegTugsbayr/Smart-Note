@@ -29,12 +29,16 @@ function owner(course) {
 function ownerLabel(course) {
   const user = owner(course)
   if (!user) return `Хэрэглэгч #${course.user_id}`
-  return user.email || [user.firstname, user.lastname].filter(Boolean).join(" ") || `Хэрэглэгч #${course.user_id}`
+  return (
+    user.email ||
+    [user.firstname, user.lastname].filter(Boolean).join(" ") ||
+    `Хэрэглэгч #${course.user_id}`
+  )
 }
 
 function statusText(course) {
   if (course.status === "completed") return "Дууссан"
-  return "Явагдаж байна"
+  return "Үргэлжилж байгаа"
 }
 
 function formatDate(value) {
@@ -47,7 +51,9 @@ function formatDate(value) {
   <AdminShell title="Хичээлүүд" :description="`Нийт ${total} хичээл`">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="relative w-full sm:max-w-sm">
-        <SearchIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <SearchIcon
+          class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
         <input
           v-model="keyword"
           class="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -83,7 +89,9 @@ function formatDate(value) {
           <tr v-for="course in courses" :key="course.id" class="border-t border-slate-200">
             <td class="px-4 py-3">
               <p class="font-medium text-foreground">{{ course.title }}</p>
-              <p class="text-xs text-muted-foreground line-clamp-1">{{ course.description || "-" }}</p>
+              <p class="text-xs text-muted-foreground line-clamp-1">
+                {{ course.description || "-" }}
+              </p>
             </td>
             <td class="px-4 py-3 text-muted-foreground">{{ ownerLabel(course) }}</td>
             <td class="px-4 py-3">
@@ -103,7 +111,9 @@ function formatDate(value) {
             </td>
           </tr>
           <tr v-if="courses.length === 0">
-            <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">Хичээл олдсонгүй.</td>
+            <td colspan="6" class="px-4 py-8 text-center text-muted-foreground">
+              Хичээл олдсонгүй.
+            </td>
           </tr>
         </tbody>
       </table>

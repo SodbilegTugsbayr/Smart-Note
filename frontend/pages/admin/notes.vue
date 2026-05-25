@@ -66,7 +66,7 @@ function replaceNote(updatedNote) {
 }
 
 async function reprocessNote(note) {
-  if (!note?.has_file || note.process_status === "processing" || reprocessingId.value) return
+  if (!note?.has_file || reprocessingId.value) return
 
   reprocessingId.value = note.id
   actionError.value = ""
@@ -169,9 +169,7 @@ async function reprocessNote(note) {
             <td class="px-4 py-3 text-right">
               <button
                 class="inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
-                :disabled="
-                  !note.has_file || note.process_status === 'processing' || !!reprocessingId
-                "
+                :disabled="!note.has_file || !!reprocessingId"
                 @click="reprocessNote(note)"
               >
                 <Loader2Icon v-if="reprocessingId === note.id" class="w-4 h-4 animate-spin" />

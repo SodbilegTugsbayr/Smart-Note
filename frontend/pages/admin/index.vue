@@ -1,5 +1,9 @@
 <script setup>
-const { data: stats, status, refresh } = await useFetch("/api/admin/stats", {
+const {
+  data: stats,
+  status,
+  refresh,
+} = await useFetch("/api/admin/stats", {
   default: () => ({
     totals: { users: 0, courses: 0, notes: 0, quizzes: 0 },
     users: { admins: 0, regular: 0 },
@@ -38,7 +42,10 @@ function formatDate(value) {
       </button>
     </div>
 
-    <div v-if="status === 'pending'" class="glass-card rounded-xl p-8 flex items-center justify-center">
+    <div
+      v-if="status === 'pending'"
+      class="glass-card rounded-xl p-8 flex items-center justify-center"
+    >
       <Loader2Icon class="w-6 h-6 text-indigo-600 animate-spin" />
     </div>
 
@@ -58,7 +65,9 @@ function formatDate(value) {
             <BookOpenIcon class="w-4 h-4 text-teal-600" />
           </div>
           <p class="mt-3 text-3xl font-semibold text-foreground">{{ totals.courses || 0 }}</p>
-          <p class="mt-1 text-xs text-muted-foreground">{{ courseStats.public || 0 }} нийтэд нээлттэй</p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            {{ courseStats.public || 0 }} нийтэд нээлттэй
+          </p>
         </div>
         <div class="glass-card rounded-xl p-5">
           <div class="flex items-center justify-between gap-3">
@@ -84,20 +93,26 @@ function formatDate(value) {
           <div class="space-y-3">
             <div>
               <div class="flex justify-between text-xs text-muted-foreground">
-                <span>Энгийн хэрэглэгчид</span>
+                <span>Хэрэглэгч</span>
                 <span>{{ userStats.regular || 0 }}</span>
               </div>
               <div class="mt-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full bg-indigo-500" :style="{ width: `${percent(userStats.regular, totals.users)}%` }" />
+                <div
+                  class="h-full bg-indigo-500"
+                  :style="{ width: `${percent(userStats.regular, totals.users)}%` }"
+                />
               </div>
             </div>
             <div>
               <div class="flex justify-between text-xs text-muted-foreground">
-                <span>Админууд</span>
+                <span>Админ</span>
                 <span>{{ userStats.admins || 0 }}</span>
               </div>
               <div class="mt-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full bg-teal-500" :style="{ width: `${percent(userStats.admins, totals.users)}%` }" />
+                <div
+                  class="h-full bg-teal-500"
+                  :style="{ width: `${percent(userStats.admins, totals.users)}%` }"
+                />
               </div>
             </div>
           </div>
@@ -108,11 +123,14 @@ function formatDate(value) {
           <div class="space-y-3">
             <div>
               <div class="flex justify-between text-xs text-muted-foreground">
-                <span>Явагдаж байна</span>
+                <span>Үргэлжилж байгаа</span>
                 <span>{{ courseStats.in_progress || 0 }}</span>
               </div>
               <div class="mt-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full bg-indigo-500" :style="{ width: `${percent(courseStats.in_progress, totals.courses)}%` }" />
+                <div
+                  class="h-full bg-indigo-500"
+                  :style="{ width: `${percent(courseStats.in_progress, totals.courses)}%` }"
+                />
               </div>
             </div>
             <div>
@@ -121,7 +139,10 @@ function formatDate(value) {
                 <span>{{ courseStats.completed || 0 }}</span>
               </div>
               <div class="mt-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div class="h-full bg-teal-500" :style="{ width: `${percent(courseStats.completed, totals.courses)}%` }" />
+                <div
+                  class="h-full bg-teal-500"
+                  :style="{ width: `${percent(courseStats.completed, totals.courses)}%` }"
+                />
               </div>
             </div>
           </div>
@@ -153,18 +174,29 @@ function formatDate(value) {
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="glass-card rounded-xl overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200">
-            <h2 class="text-sm font-semibold text-foreground">Сүүлийн хичээлүүд</h2>
+            <h2 class="text-sm font-semibold text-foreground">Сүүлд үүсгэгдсэн хичээлүүд</h2>
           </div>
           <table class="w-full text-sm">
             <tbody>
-              <tr v-for="course in stats.recent_courses" :key="course.id" class="border-t border-slate-100 first:border-t-0">
+              <tr
+                v-for="course in stats.recent_courses"
+                :key="course.id"
+                class="border-t border-slate-100 first:border-t-0"
+              >
                 <td class="px-4 py-3">
-                  <NuxtLink :to="`/course/${course.id}`" class="font-medium text-foreground hover:text-indigo-700">
+                  <NuxtLink
+                    :to="`/course/${course.id}`"
+                    class="font-medium text-foreground hover:text-indigo-700"
+                  >
                     {{ course.title }}
                   </NuxtLink>
-                  <p class="text-xs text-muted-foreground">{{ course.notes?.length || 0 }} тэмдэглэл</p>
+                  <p class="text-xs text-muted-foreground">
+                    {{ course.notes?.length || 0 }} тэмдэглэл
+                  </p>
                 </td>
-                <td class="px-4 py-3 text-right text-xs text-muted-foreground">{{ formatDate(course.created_at) }}</td>
+                <td class="px-4 py-3 text-right text-xs text-muted-foreground">
+                  {{ formatDate(course.created_at) }}
+                </td>
               </tr>
               <tr v-if="!stats.recent_courses?.length">
                 <td class="px-4 py-6 text-sm text-muted-foreground">Одоогоор хичээл алга.</td>
@@ -175,16 +207,24 @@ function formatDate(value) {
 
         <div class="glass-card rounded-xl overflow-hidden">
           <div class="px-4 py-3 border-b border-slate-200">
-            <h2 class="text-sm font-semibold text-foreground">Сүүлийн тэмдэглэлүүд</h2>
+            <h2 class="text-sm font-semibold text-foreground">Сүүлд үүсгэгдсэн тэмдэглэлүүд</h2>
           </div>
           <table class="w-full text-sm">
             <tbody>
-              <tr v-for="note in stats.recent_notes" :key="note.id" class="border-t border-slate-100 first:border-t-0">
+              <tr
+                v-for="note in stats.recent_notes"
+                :key="note.id"
+                class="border-t border-slate-100 first:border-t-0"
+              >
                 <td class="px-4 py-3">
-                  <p class="font-medium text-foreground">{{ note.title || "Гарчиггүй тэмдэглэл" }}</p>
-                  <p class="text-xs text-muted-foreground">Хичээл #{{ note.course_id }}</p>
+                  <p class="font-medium text-foreground">
+                    {{ note.title || "Гарчиггүй тэмдэглэл" }}
+                  </p>
+                  <p class="text-xs text-muted-foreground">Хичээлийн ID: {{ note.course_id }}</p>
                 </td>
-                <td class="px-4 py-3 text-right text-xs text-muted-foreground">{{ formatDate(note.created_at) }}</td>
+                <td class="px-4 py-3 text-right text-xs text-muted-foreground">
+                  {{ formatDate(note.created_at) }}
+                </td>
               </tr>
               <tr v-if="!stats.recent_notes?.length">
                 <td class="px-4 py-6 text-sm text-muted-foreground">Одоогоор тэмдэглэл алга.</td>
