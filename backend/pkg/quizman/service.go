@@ -119,6 +119,17 @@ func (s *Service) SaveResult(data *QuizResult) (*QuizResult, error) {
 	return data, nil
 }
 
+func (s *Service) GetLatestResult(userID, noteID int) (*QuizResult, error) {
+	var result QuizResult
+	if err := s.db.Where("user_id = ? AND note_id = ?", userID, noteID).Order("created_at desc, id desc").First(&result).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &result, nil
+}
+
 func (s *Service) Delete(id int) error {
 	return s.db.Delete(new(Quiz), id).Error
 }

@@ -21,6 +21,8 @@ const resultAnswers = ref([])
 const resultScore = ref(0)
 const resultTotal = ref(0)
 const resultPercentage = ref(0)
+const latestResult = ref(null)
+const testStarted = ref(false)
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
@@ -75,8 +77,9 @@ useQueue((message) => {
 })
 
 async function fetchQuizzes(noteId) {
-  resetQuizState()
+  resetQuizState(false)
   quizzes.value = []
+  latestResult.value = null
   errorMessage.value = ""
   resultMessage.value = ""
   regenerating.value = false
@@ -88,6 +91,7 @@ async function fetchQuizzes(noteId) {
     const result = await $fetch(`/api/notes/${noteId}/quizzes`)
     if (String(props.activeNoteId) !== String(noteId)) return
     quizzes.value = Array.isArray(result) ? result : result?.items || []
+    latestResult.value = Array.isArray(result) ? null : result?.latest_result || null
   } catch (err) {
     if (String(props.activeNoteId) === String(noteId)) {
       errorMessage.value = err?.data?.message || "Тест уншихад алдаа гарлаа"
@@ -103,10 +107,16 @@ function handleAnswer(answer) {
   if (showResult.value) return
   selectedAnswer.value = answer
   showResult.value = true
-  answers.value.push({
+  const nextAnswer = {
     quiz_id: currentQuiz.value?.id,
     answer,
-  })
+  }
+  const existingIndex = answers.value.findIndex((item) => item.quiz_id === nextAnswer.quiz_id)
+  if (existingIndex >= 0) {
+    answers.value.splice(existingIndex, 1, nextAnswer)
+  } else {
+    answers.value.push(nextAnswer)
+  }
 }
 
 async function handleNext() {
@@ -121,12 +131,13 @@ async function handleNext() {
   }
 }
 
-function resetQuizState() {
+function resetQuizState(started = false) {
   currentQ.value = 0
   selectedAnswer.value = null
   showResult.value = false
   answers.value = []
   quizDone.value = false
+  testStarted.value = started
   passed.value = false
   resultAnswers.value = []
   resultScore.value = 0
@@ -136,7 +147,13 @@ function resetQuizState() {
 
 function resetQuiz() {
   if (submitting.value || regenerating.value) return
-  resetQuizState()
+  resetQuizState(true)
+  resultMessage.value = ""
+}
+
+function startQuiz() {
+  if (!quizzes.value.length || submitting.value || regenerating.value) return
+  resetQuizState(true)
   resultMessage.value = ""
 }
 
@@ -165,6 +182,7 @@ async function submitQuizResult() {
     resultScore.value = Number(result?.score || 0)
     resultTotal.value = Number(result?.total || resultAnswers.value.length || quizzes.value.length)
     resultPercentage.value = Number(result?.percentage || 0)
+    latestResult.value = result?.result || latestResult.value
     quizDone.value = true
     mergeQuizSubmission(result)
   } catch (err) {
@@ -223,7 +241,7 @@ function optionClass(option) {
   <div class="space-y-4">
     <div class="flex items-center gap-2 flex-wrap">
       <button
-        v-if="quizDone && quizzes.length"
+        v-if="(quizDone || testStarted) && quizzes.length"
         @click="resetQuiz"
         :disabled="submitting || regenerating"
         class="glass-card glass-card-hover px-4 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
@@ -258,6 +276,49 @@ function optionClass(option) {
       </p>
     </div>
 
+    <div v-else-if="!testStarted && !quizDone" class="glass-card rounded-xl p-8 space-y-6">
+      <div class="text-center">
+        <div
+          class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-500/10"
+        >
+          <ClipboardListIcon class="h-8 w-8 text-indigo-600" />
+        </div>
+        <h3 class="font-heading text-2xl text-foreground mb-2">Тест</h3>
+        <p class="text-sm text-muted-foreground">
+          {{ quizzes.length }} асуулттай тест. Эхлүүлсний дараа таб солисон ч хариултууд
+          хадгалагдана.
+        </p>
+      </div>
+
+      <div v-if="latestResult" class="rounded-xl border border-slate-200 bg-white/70 px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Өмнөх үр дүн
+            </p>
+            <p class="mt-1 text-sm text-foreground">
+              {{ latestResult.score }}/{{ latestResult.total }} ({{ latestResult.percentage }}%)
+            </p>
+          </div>
+          <span
+            v-if="latestResult.passed"
+            class="rounded-full px-2.5 py-1 text-xs font-medium"
+            :class="'bg-teal-500/10 text-teal-700'"
+          >
+            {{ "Давсан" }}
+          </span>
+        </div>
+      </div>
+
+      <button
+        @click="startQuiz"
+        class="gradient-indigo mx-auto flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+      >
+        <PlayIcon class="h-4 w-4" />
+        Тест эхлүүлэх
+      </button>
+    </div>
+
     <div v-else-if="quizDone" class="glass-card rounded-xl p-8 space-y-6">
       <div class="text-center">
         <template v-if="passed">
@@ -281,7 +342,10 @@ function optionClass(option) {
           {{ score }}/{{ resultCount }} ({{ pct }}%)
         </p>
         <p class="text-muted-foreground text-sm mt-2">
-          {{ resultMessage || (passed ? "Та энэ тэмдэглэлийг амжилттай дууслаа!" : "90%-аас их авбал дуусгана.") }}
+          {{
+            resultMessage ||
+            (passed ? "Та энэ тэмдэглэлийг амжилттай дууслаа!" : "90%-аас их авбал дуусгана.")
+          }}
         </p>
 
         <div
@@ -290,7 +354,7 @@ function optionClass(option) {
         >
           <Loader2Icon class="w-4 h-4 animate-spin" />
           <span>
-            {{ submitting ? "Үр дүн хадгалж байна" : resultMessage || "Тест дахин үүсгэж байна" }}
+            {{ submitting ? "Үр дүн хадгалж байна" : " Шинэ тест үүсгэж байна." }}
           </span>
         </div>
       </div>
@@ -304,15 +368,11 @@ function optionClass(option) {
           :key="item.quiz_id"
           class="rounded-xl border px-4 py-3"
           :class="
-            item.correct
-              ? 'border-teal-500/30 bg-teal-500/5'
-              : 'border-red-500/30 bg-red-500/5'
+            item.correct ? 'border-teal-500/30 bg-teal-500/5' : 'border-red-500/30 bg-red-500/5'
           "
         >
           <div class="flex items-start justify-between gap-3">
-            <p class="text-sm font-medium text-foreground">
-              {{ idx + 1 }}. {{ item.question }}
-            </p>
+            <p class="text-sm font-medium text-foreground">{{ idx + 1 }}. {{ item.question }}</p>
             <span
               class="flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
               :class="item.correct ? 'bg-teal-500/10 text-teal-700' : 'bg-red-500/10 text-red-700'"

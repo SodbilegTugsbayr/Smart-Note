@@ -185,7 +185,7 @@ function selectNote(id) {
       <div class="flex-1 overflow-y-auto">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           <!-- Tabs -->
-          <Tabs v-model="activeTab" default-value="notes" class="space-y-4">
+          <Tabs v-model="activeTab" default-value="notes" :unmount-on-hide="false" class="space-y-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <TabsList class="bg-slate-100 border border-slate-200 p-1 rounded-xl">
                 <TabsTrigger

@@ -281,10 +281,16 @@ func getNoteQuizzes(w http.ResponseWriter, r *http.Request) {
 		oapi.ServerError(w, err)
 		return
 	}
+	latestResult, err := app.Quizzes.GetLatestResult(loggedUser.ID, chosenNote.ID)
+	if err != nil {
+		oapi.ServerError(w, err)
+		return
+	}
 
 	oapi.SendResp(w, map[string]interface{}{
-		"items": publicQuizResponses(quizzes),
-		"total": total,
+		"items":         publicQuizResponses(quizzes),
+		"total":         total,
+		"latest_result": latestResult,
 	})
 }
 
@@ -415,7 +421,7 @@ func submitNoteQuiz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp.Regenerating = true
-	resp.Message = "Тестийн оноо 90%-аас их биш байна. Шинэ тест үүсгэж байна."
+	resp.Message = "Тестийн оноо 90%-д хүрсэнгүй."
 
 	noteToRegenerate := *savedNote
 	go regenerateNoteQuizzes(&noteToRegenerate, loggedUser.ID)
