@@ -115,28 +115,30 @@ async function handleDeleteNote() {
 </script>
 
 <template>
-  <div class="p-3">
-    <div class="flex items-center justify-between gap-2 px-2 mb-3">
-      <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Тэмдэглэл</p>
-      <button
-        v-if="!readonly"
-        @click="handleAddNote"
-        :disabled="adding"
-        class="w-7 h-7 rounded-lg text-muted-foreground hover:text-indigo-700 hover:bg-indigo-500/10 transition-colors flex items-center justify-center disabled:opacity-50"
-        title="Тэмдэглэл нэмэх"
-      >
-        <Loader2Icon v-if="adding" class="w-3.5 h-3.5 animate-spin" />
-        <PlusIcon v-else class="w-3.5 h-3.5" />
-      </button>
+  <div class="flex h-full max-h-[calc(100vh-8rem)] min-h-0 flex-col overflow-hidden p-3">
+    <div class="shrink-0">
+      <div class="flex items-center justify-between gap-2 px-2 mb-3">
+        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider">Тэмдэглэл</p>
+        <button
+          v-if="!readonly"
+          @click="handleAddNote"
+          :disabled="adding"
+          class="w-7 h-7 rounded-lg text-muted-foreground hover:text-indigo-700 hover:bg-indigo-500/10 transition-colors flex items-center justify-center disabled:opacity-50"
+          title="Тэмдэглэл нэмэх"
+        >
+          <Loader2Icon v-if="adding" class="w-3.5 h-3.5 animate-spin" />
+          <PlusIcon v-else class="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <p v-if="errorMessage" class="text-xs text-red-600 px-2 mb-2">{{ errorMessage }}</p>
     </div>
 
-    <p v-if="errorMessage" class="text-xs text-red-600 px-2 mb-2">{{ errorMessage }}</p>
-
-    <div v-if="sortedNotes.length === 0" class="text-center py-4">
+    <div v-if="sortedNotes.length === 0" class="shrink-0 text-center py-4">
       <p class="text-xs text-muted-foreground">Тэмдэглэл байхгүй</p>
     </div>
 
-    <div v-else class="space-y-1">
+    <div v-else class="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
       <div
         v-for="note in sortedNotes"
         :key="note.id"
