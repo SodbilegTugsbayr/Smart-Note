@@ -501,21 +501,21 @@ func TestAIFlashcardAndChatValidationRoutesWithTestDB(t *testing.T) {
 
 func TestProcessNoteAndRegenerateQuizzesWithFakesAndTestDB(t *testing.T) {
 	setupDBBackedRouter(t)
-	app.OCRService = fakeOCRClient{text: "raw OCR text"}
+	app.OCRService = fakeOCRClient{text: " \x00raw OCR text\x00 "}
 	app.EguneService = fakeEguneClient{
 		output: &eguneapi.GeneratedOutput{
 			Note: noteman.Note{
-				Title:   "Generated title",
-				Summary: "Generated summary",
+				Title:   "\x00Generated title",
+				Summary: "Generated summary\x00",
 				KeyConcepts: []*noteman.KeyConcept{
-					{Concept: "Concept", Definition: "Definition"},
+					{Concept: "\x00Concept", Definition: "Definition\x00"},
 				},
 				FlashCards: []*noteman.FlashCard{
-					{Question: "Q", Answer: "A"},
+					{Question: "\x00Q", Answer: "A\x00"},
 				},
 			},
 			Quizzes: []quizman.Quiz{
-				{Question: "Generated quiz?", Options: []string{"A", "B", "C", "D"}, CorrectAnswer: "A"},
+				{Question: "\x00Generated quiz?", Options: []string{"A\x00", "B", "C", "D"}, CorrectAnswer: "A\x00"},
 			},
 		},
 		answer: "chat answer",
@@ -531,12 +531,21 @@ func TestProcessNoteAndRegenerateQuizzesWithFakesAndTestDB(t *testing.T) {
 	if savedNote.ProcessStatus != noteman.PROCESS_STATUS_COMPLETED || savedNote.Summary != "Generated summary" || savedNote.RawContent != "raw OCR text" {
 		t.Fatalf("processed note = %+v, want completed generated note", savedNote)
 	}
+	if savedNote.Title != "Generated title" || savedNote.KeyConcepts[0].Concept != "Concept" || savedNote.KeyConcepts[0].Definition != "Definition" {
+		t.Fatalf("sanitized generated note = %+v, want no null bytes", savedNote)
+	}
+	if savedNote.FlashCards[0].Question != "Q" || savedNote.FlashCards[0].Answer != "A" {
+		t.Fatalf("sanitized flash cards = %+v, want no null bytes", savedNote.FlashCards)
+	}
 	quizzes, total, err := app.Quizzes.GetAll(&quizman.Filter{NoteID: note.ID}, 1, 25)
 	if err != nil {
 		t.Fatalf("GetAll(quizzes) error = %v", err)
 	}
 	if total != 1 || len(quizzes) != 1 || quizzes[0].NoteID != note.ID {
 		t.Fatalf("generated quizzes len=%d total=%d data=%+v, want one quiz for note", len(quizzes), total, quizzes)
+	}
+	if quizzes[0].Question != "Generated quiz?" || quizzes[0].Options[0] != "A" || quizzes[0].CorrectAnswer != "A" {
+		t.Fatalf("sanitized quiz = %+v, want no null bytes", quizzes[0])
 	}
 
 	if answer, err := app.EguneService.AnswerQuestion(buildCourseContext(&courseman.Course{Notes: []*noteman.Note{savedNote}}), "Question?"); err != nil || answer != "chat answer" {
@@ -547,7 +556,7 @@ func TestProcessNoteAndRegenerateQuizzesWithFakesAndTestDB(t *testing.T) {
 		output: &eguneapi.GeneratedOutput{
 			Note: noteman.Note{Title: "Regenerated"},
 			Quizzes: []quizman.Quiz{
-				{Question: "Replacement?", Options: []string{"A", "B", "C", "D"}, CorrectAnswer: "B"},
+				{Question: "\x00Replacement?", Options: []string{"A", "\x00B", "C", "D"}, CorrectAnswer: "\x00B"},
 			},
 		},
 	}
@@ -556,7 +565,7 @@ func TestProcessNoteAndRegenerateQuizzesWithFakesAndTestDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAll(regenerated quizzes) error = %v", err)
 	}
-	if total != 1 || replaced[0].Question != "Replacement?" {
+	if total != 1 || replaced[0].Question != "Replacement?" || replaced[0].Options[1] != "B" || replaced[0].CorrectAnswer != "B" {
 		t.Fatalf("regenerated quizzes len=%d data=%+v, want replacement quiz", total, replaced)
 	}
 

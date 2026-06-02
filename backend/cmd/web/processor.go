@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/cmd/web/app"
+	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/common"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/eguneapi"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/noteman"
 	"github.com/SodbilegTugsbayr/Smart-Note/backend/pkg/quizman"
@@ -290,6 +291,40 @@ func saveNoteProcessStatus(note *noteman.Note, status string) {
 	}
 }
 
+func cleanGeneratedNote(note *noteman.Note) {
+	if note == nil {
+		return
+	}
+	note.Title = common.CleanString(note.Title)
+	note.Summary = common.CleanString(note.Summary)
+	note.RawContent = common.CleanString(note.RawContent)
+	for _, concept := range note.KeyConcepts {
+		if concept == nil {
+			continue
+		}
+		concept.Concept = common.CleanString(concept.Concept)
+		concept.Definition = common.CleanString(concept.Definition)
+	}
+	for _, card := range note.FlashCards {
+		if card == nil {
+			continue
+		}
+		card.Question = common.CleanString(card.Question)
+		card.Answer = common.CleanString(card.Answer)
+	}
+}
+
+func cleanGeneratedQuiz(quiz *quizman.Quiz) {
+	if quiz == nil {
+		return
+	}
+	quiz.Question = common.CleanString(quiz.Question)
+	quiz.CorrectAnswer = common.CleanString(quiz.CorrectAnswer)
+	for i := range quiz.Options {
+		quiz.Options[i] = common.CleanString(quiz.Options[i])
+	}
+}
+
 func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 	var filePath string
 
@@ -325,6 +360,7 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 		markNoteProcessingFailed(note, recipientUserIDs, "Файлаас текст танихад алдаа гарлаа", err)
 		return err
 	}
+	rawText = common.CleanString(rawText)
 
 	note.RawContent = rawText
 	if _, err := app.Notes.Save(note); err != nil {
@@ -345,6 +381,7 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 
 	for _, quiz := range output.Quizzes {
 		quiz.NoteID = note.ID
+		cleanGeneratedQuiz(&quiz)
 		if _, err := app.Quizzes.Save(&quiz); err != nil {
 			app.ErrorLog.Println("failed to save quiz: ", err)
 		}
@@ -355,6 +392,7 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 	note.KeyConcepts = output.Note.KeyConcepts
 	note.FlashCards = output.Note.FlashCards
 	note.ProcessStatus = noteman.PROCESS_STATUS_COMPLETED
+	cleanGeneratedNote(note)
 	if strings.TrimSpace(note.Status) == "" {
 		note.Status = noteman.STATUS_IN_PROGRESS
 	}
@@ -412,6 +450,7 @@ func regenerateNoteQuizzes(note *noteman.Note, recipientUserIDs ...int) {
 
 		for i := range generatedQuizzes {
 			generatedQuizzes[i].NoteID = note.ID
+			cleanGeneratedQuiz(&generatedQuizzes[i])
 			if err := tx.Save(&generatedQuizzes[i]).Error; err != nil {
 				return err
 			}
@@ -430,6 +469,7 @@ func regenerateNoteQuizzes(note *noteman.Note, recipientUserIDs ...int) {
 
 func markNoteProcessingFailed(note *noteman.Note, recipientUserIDs []int, message string, cause error) {
 	note.ProcessStatus = noteman.PROCESS_STATUS_FAILED
+	cleanGeneratedNote(note)
 	if _, err := app.Notes.Save(note); err != nil {
 		app.ErrorLog.Println("failed to mark note processing failed: ", err)
 	}
