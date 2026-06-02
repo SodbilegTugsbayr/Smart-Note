@@ -14,6 +14,21 @@ const progressByNoteId = ref({})
 const MAX_NOTE_PDF_PAGES = 50
 const LARGE_NOTE_FILE_MESSAGE =
   "Файл хэтэрхий том байна. Хичээлийн ном оруулах хэсгээр файлыг оруулна уу"
+const PROCESSING_NOTE_STATUSES = ["queued", "processing", "ocr_processing", "ai_generating"]
+
+const PROCESS_STATUS_PROGRESS = {
+  queued: 5,
+  processing: 10,
+  ocr_processing: 35,
+  ai_generating: 75,
+}
+
+const PROCESS_STATUS_MESSAGES = {
+  queued: "AI боловсруулалтын дараалалд байна...",
+  processing: "AI боловсруулалт эхэлж байна...",
+  ocr_processing: "Файлаас текст таньж байна...",
+  ai_generating: "Тэмдэглэлийн агуулга үүсгэж байна...",
+}
 
 const activeNote = computed(() => {
   const notes = props.course.notes || []
@@ -25,7 +40,7 @@ const activeProgress = computed(() =>
   activeNote.value ? progressByNoteId.value[activeNote.value.id] : null,
 )
 const isActiveNoteProcessing = computed(() =>
-  ["queued", "processing"].includes(activeNote.value?.process_status),
+  PROCESSING_NOTE_STATUSES.includes(activeNote.value?.process_status),
 )
 const isActiveProgressRunning = computed(
   () => activeProgress.value && !["completed", "failed"].includes(activeProgress.value.stage),
@@ -34,13 +49,17 @@ const showProcessProgress = computed(
   () => uploading.value || isActiveNoteProcessing.value || isActiveProgressRunning.value,
 )
 const displayProgress = computed(() => {
-  const value = activeProgress.value?.progress ?? (uploading.value ? progress.value : 25)
+  const value =
+    activeProgress.value?.progress ??
+    (uploading.value
+      ? progress.value
+      : PROCESS_STATUS_PROGRESS[activeNote.value?.process_status] || 25)
   return Math.max(0, Math.min(100, Math.round(value)))
 })
 const displayProgressMessage = computed(() => {
   if (activeProgress.value?.message) return activeProgress.value.message
   if (uploading.value) return "Файл сервер рүү илгээж байна..."
-  return "Файлаас текст таньж байна..."
+  return PROCESS_STATUS_MESSAGES[activeNote.value?.process_status] || "Файлаас текст таньж байна..."
 })
 const canAttachFile = computed(
   () =>
@@ -48,7 +67,7 @@ const canAttachFile = computed(
     activeNote.value &&
     !activeNote.value.is_from_book &&
     !activeNote.value.has_file &&
-    activeNote.value.process_status !== "processing",
+    !PROCESSING_NOTE_STATUSES.includes(activeNote.value.process_status),
 )
 
 watch(
@@ -82,10 +101,16 @@ useQueue((message) => {
     stage: payload.stage,
     progress: payload.progress,
     message: payload.message,
+    process_status: payload.process_status,
   })
 
   if (payload.note) {
     mergeNote(payload.note)
+  } else if (payload.process_status) {
+    mergeNote({
+      id: Number(payload.note_id),
+      process_status: payload.process_status,
+    })
   }
 
   if (payload.stage === "failed") {
@@ -113,21 +138,25 @@ function mergeNote(updatedNote) {
   if (!updatedNote?.id) return
 
   let found = false
+  let mergedActiveNote = null
   const notes = (props.course.notes || []).map((note) => {
     if (note.id !== updatedNote.id) return note
 
     found = true
-    return { ...note, ...updatedNote }
+    const merged = { ...note, ...updatedNote }
+    mergedActiveNote = merged
+    return merged
   })
   if (!found) {
     notes.push(updatedNote)
+    mergedActiveNote = updatedNote
   }
 
   emit("update", useCourseWithSyncedProgress(props.course, notes))
 
   if (activeNote.value?.id === updatedNote.id) {
-    title.value = updatedNote.title || ""
-    content.value = updatedNote.summary || ""
+    title.value = mergedActiveNote?.title || ""
+    content.value = mergedActiveNote?.summary || ""
   }
 }
 
@@ -252,6 +281,8 @@ function noteStatusText(note) {
   if (!note) return ""
   if (note.process_status === "queued") return "Дараалалд"
   if (note.process_status === "processing") return "Боловсруулж байна"
+  if (note.process_status === "ocr_processing") return "OCR таньж байна"
+  if (note.process_status === "ai_generating") return "AI үүсгэж байна"
   if (note.process_status === "failed") return "Алдаа"
   if (note.status === "completed") return "Дууссан"
   if (note.process_status === "completed") return "Дуусаагүй"
@@ -264,6 +295,12 @@ function noteStatusClass(note) {
   }
   if (note?.process_status === "processing") {
     return "bg-indigo-500/10 text-indigo-700 border border-indigo-500/20"
+  }
+  if (note?.process_status === "ocr_processing") {
+    return "bg-cyan-500/10 text-cyan-700 border border-cyan-500/20"
+  }
+  if (note?.process_status === "ai_generating") {
+    return "bg-fuchsia-500/10 text-fuchsia-700 border border-fuchsia-500/20"
   }
   if (note?.process_status === "failed") {
     return "bg-red-500/10 text-red-700 border border-red-500/20"

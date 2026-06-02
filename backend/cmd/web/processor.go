@@ -283,14 +283,18 @@ func runLimited[T any](limiter chan struct{}, fn func() (T, error)) (T, error) {
 	return fn()
 }
 
+func saveNoteProcessStatus(note *noteman.Note, status string) {
+	note.ProcessStatus = status
+	if _, err := app.Notes.Save(note); err != nil {
+		app.ErrorLog.Println("failed to update note process status: ", err)
+	}
+}
+
 func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 	var filePath string
 
-	note.ProcessStatus = noteman.PROCESS_STATUS_PROCESSING
-	if _, err := app.Notes.Save(note); err != nil {
-		app.ErrorLog.Println("failed to update processing status: ", err)
-	}
-	publishNoteProcessProgress(note, recipientUserIDs, "started", 10, "AI боловсруулалт эхэллээ", "", false)
+	saveNoteProcessStatus(note, noteman.PROCESS_STATUS_PROCESSING)
+	publishNoteProcessProgress(note, recipientUserIDs, "started", 10, "AI боловсруулалт эхэллээ", "", true)
 
 	if note.IsFromBook {
 		tempFile, err := extractPages(note.FilePath, note.StartPage, note.EndPage)
@@ -311,7 +315,8 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 		return err
 	}
 
-	publishNoteProcessProgress(note, recipientUserIDs, "ocr_started", 25, "Файлаас текст таньж байна", "", false)
+	saveNoteProcessStatus(note, noteman.PROCESS_STATUS_OCR_PROCESSING)
+	publishNoteProcessProgress(note, recipientUserIDs, noteman.PROCESS_STATUS_OCR_PROCESSING, 25, "Файлаас текст таньж байна", "", true)
 	rawText, err := runLimited(ocrLimiter, func() (string, error) {
 		return app.OCRService.GetTextFromFile(filePath)
 	})
@@ -327,7 +332,8 @@ func processNote(note *noteman.Note, recipientUserIDs ...int) error {
 	}
 	publishNoteProcessProgress(note, recipientUserIDs, "ocr_completed", 60, "Текст таньж дууслаа", "", false)
 
-	publishNoteProcessProgress(note, recipientUserIDs, "egune_started", 75, "Тэмдэглэлийн агуулга үүсгэж байна", "", false)
+	saveNoteProcessStatus(note, noteman.PROCESS_STATUS_AI_GENERATING)
+	publishNoteProcessProgress(note, recipientUserIDs, noteman.PROCESS_STATUS_AI_GENERATING, 75, "Тэмдэглэлийн агуулга үүсгэж байна", "", true)
 	output, err := runLimited(eguneLimiter, func() (*eguneapi.GeneratedOutput, error) {
 		return app.EguneService.GenerateNote(rawText)
 	})

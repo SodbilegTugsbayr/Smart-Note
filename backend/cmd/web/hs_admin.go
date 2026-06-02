@@ -66,7 +66,11 @@ func getAdminStats(w http.ResponseWriter, r *http.Request) {
 		oapi.ServerError(w, err)
 		return
 	}
-	processingNotes, err := countWhere(&noteman.Note{}, "process_status = ?", noteman.PROCESS_STATUS_PROCESSING)
+	processingNotes, err := countWhere(&noteman.Note{}, "process_status IN ?", []string{
+		noteman.PROCESS_STATUS_PROCESSING,
+		noteman.PROCESS_STATUS_OCR_PROCESSING,
+		noteman.PROCESS_STATUS_AI_GENERATING,
+	})
 	if err != nil {
 		oapi.ServerError(w, err)
 		return
@@ -200,7 +204,7 @@ func reprocessAdminNote(w http.ResponseWriter, r *http.Request) {
 		oapi.CustomError(w, http.StatusBadRequest, "Дахин боловсруулах эх файл алга")
 		return
 	}
-	if chosenNote.ProcessStatus == noteman.PROCESS_STATUS_PROCESSING || chosenNote.ProcessStatus == noteman.PROCESS_STATUS_QUEUED {
+	if noteProcessStatusIsActive(chosenNote.ProcessStatus) {
 		oapi.CustomError(w, http.StatusBadRequest, "Тэмдэглэл одоо боловсруулагдаж байна")
 		return
 	}
@@ -272,10 +276,27 @@ func safeAdminOrder(value, fallback string) string {
 
 func safeNoteProcessStatus(value string) string {
 	switch strings.TrimSpace(value) {
-	case noteman.PROCESS_STATUS_QUEUED, noteman.PROCESS_STATUS_COMPLETED, noteman.PROCESS_STATUS_PROCESSING, noteman.PROCESS_STATUS_FAILED:
+	case noteman.PROCESS_STATUS_QUEUED,
+		noteman.PROCESS_STATUS_COMPLETED,
+		noteman.PROCESS_STATUS_PROCESSING,
+		noteman.PROCESS_STATUS_OCR_PROCESSING,
+		noteman.PROCESS_STATUS_AI_GENERATING,
+		noteman.PROCESS_STATUS_FAILED:
 		return strings.TrimSpace(value)
 	default:
 		return ""
+	}
+}
+
+func noteProcessStatusIsActive(status string) bool {
+	switch strings.TrimSpace(status) {
+	case noteman.PROCESS_STATUS_QUEUED,
+		noteman.PROCESS_STATUS_PROCESSING,
+		noteman.PROCESS_STATUS_OCR_PROCESSING,
+		noteman.PROCESS_STATUS_AI_GENERATING:
+		return true
+	default:
+		return false
 	}
 }
 

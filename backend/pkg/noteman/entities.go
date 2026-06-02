@@ -12,10 +12,12 @@ const (
 	STATUS_IN_PROGRESS = "in_progress"
 	STATUS_COMPLETED   = "completed"
 
-	PROCESS_STATUS_QUEUED     = "queued"
-	PROCESS_STATUS_PROCESSING = "processing"
-	PROCESS_STATUS_COMPLETED  = "completed"
-	PROCESS_STATUS_FAILED     = "failed"
+	PROCESS_STATUS_QUEUED         = "queued"
+	PROCESS_STATUS_PROCESSING     = "processing"
+	PROCESS_STATUS_OCR_PROCESSING = "ocr_processing"
+	PROCESS_STATUS_AI_GENERATING  = "ai_generating"
+	PROCESS_STATUS_COMPLETED      = "completed"
+	PROCESS_STATUS_FAILED         = "failed"
 
 	PROCESS_JOB_STATUS_QUEUED     = "queued"
 	PROCESS_JOB_STATUS_PROCESSING = "processing"
